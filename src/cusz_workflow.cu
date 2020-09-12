@@ -1,4 +1,5 @@
 
+#include <bits/stdint-uintn.h>
 #include <cuda_runtime.h>
 #include <cusparse.h>
 
@@ -22,6 +23,7 @@
 #include "cusz_workflow.cuh"
 #include "filter.cuh"
 #include "format.hh"
+#include "gather_scatter.cuh"
 #include "huffman_workflow.cuh"
 #include "io.hh"
 #include "verify.hh"
@@ -181,210 +183,210 @@ void cuSZ::workflow::ReversedPdQ(T* d_xdata, Q* d_bcode, T* d_outlier, size_t* d
     cudaFree(d_dims_L16);
 }
 
-template <typename T>
-__global__ void cuSZ::workflow::Condenser(T* outlier, int* meta, size_t BLK, size_t nBLK)
-{
-    auto id = blockDim.x * blockIdx.x + threadIdx.x;
-    if (id >= nBLK) return;
-    int count = 0;
-    for (auto i = 0; i < BLK; i++)
-        if (outlier[i] != 0) outlier[count++] = outlier[i];
+// template <typename T>
+// __global__ void cuSZ::workflow::Condenser(T* outlier, int* meta, size_t BLK, size_t nBLK)
+// {
+//     auto id = blockDim.x * blockIdx.x + threadIdx.x;
+//     if (id >= nBLK) return;
+//     int count = 0;
+//     for (auto i = 0; i < BLK; i++)
+//         if (outlier[i] != 0) outlier[count++] = outlier[i];
 
-    meta[id] = count;
-}
+//     meta[id] = count;
+// }
 
-void cuSZ::workflow::DeflateOutlierUsingCuSparse(
-    float*  d_A,  //
-    size_t  len,
-    int&    nnzC,
-    int**   csrRowPtrC,
-    int**   csrColIndC,
-    float** csrValC)
-{
-    cusparseHandle_t   handle    = nullptr;
-    cudaStream_t       stream    = nullptr;
-    cusparseMatDescr_t descrC    = nullptr;
-    cusparseStatus_t   status    = CUSPARSE_STATUS_SUCCESS;
-    cudaError_t        cudaStat1 = cudaSuccess;
-    cudaError_t        cudaStat2 = cudaSuccess;
-    cudaError_t        cudaStat3 = cudaSuccess;
-    //    cudaError_t        cudaStat4 = cudaSuccess;
-    //    cudaError_t        cudaStat5 = cudaSuccess;
-    const int m   = 1;
-    const int n   = len;
-    const int lda = m;
+// void cuSZ::workflow::DeflateOutlierUsingCuSparse(
+//     float*  d_A,  //
+//     size_t  len,
+//     int&    nnzC,
+//     int**   csrRowPtrC,
+//     int**   csrColIndC,
+//     float** csrValC)
+// {
+//     cusparseHandle_t   handle    = nullptr;
+//     cudaStream_t       stream    = nullptr;
+//     cusparseMatDescr_t descrC    = nullptr;
+//     cusparseStatus_t   status    = CUSPARSE_STATUS_SUCCESS;
+//     cudaError_t        cudaStat1 = cudaSuccess;
+//     cudaError_t        cudaStat2 = cudaSuccess;
+//     cudaError_t        cudaStat3 = cudaSuccess;
+//     //    cudaError_t        cudaStat4 = cudaSuccess;
+//     //    cudaError_t        cudaStat5 = cudaSuccess;
+//     const int m   = 1;
+//     const int n   = len;
+//     const int lda = m;
 
-    //    int*   csrRowPtrC = nullptr;
-    //    int*   csrColIndC = nullptr;
-    //    float* csrValC    = nullptr;
+//     //    int*   csrRowPtrC = nullptr;
+//     //    int*   csrColIndC = nullptr;
+//     //    float* csrValC    = nullptr;
 
-    //    float* d_A          = nullptr;
-    int*   d_csrRowPtrC = nullptr;
-    int*   d_csrColIndC = nullptr;
-    float* d_csrValC    = nullptr;
+//     //    float* d_A          = nullptr;
+//     int*   d_csrRowPtrC = nullptr;
+//     int*   d_csrColIndC = nullptr;
+//     float* d_csrValC    = nullptr;
 
-    size_t lworkInBytes = 0;
-    char*  d_work       = nullptr;
+//     size_t lworkInBytes = 0;
+//     char*  d_work       = nullptr;
 
-    //    int nnzC = 0;
+//     //    int nnzC = 0;
 
-    float threshold = 0; /* remove Aij <= 4.1 */
+//     float threshold = 0; /* remove Aij <= 4.1 */
 
-    /* step 1: create cusparse handle, bind a stream */
-    cudaStat1 = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
-    assert(cudaSuccess == cudaStat1);
+//     /* step 1: create cusparse handle, bind a stream */
+//     cudaStat1 = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+//     assert(cudaSuccess == cudaStat1);
 
-    status = cusparseCreate(&handle);
-    assert(CUSPARSE_STATUS_SUCCESS == status);
+//     status = cusparseCreate(&handle);
+//     assert(CUSPARSE_STATUS_SUCCESS == status);
 
-    status = cusparseSetStream(handle, stream);
-    assert(CUSPARSE_STATUS_SUCCESS == status);
+//     status = cusparseSetStream(handle, stream);
+//     assert(CUSPARSE_STATUS_SUCCESS == status);
 
-    /* step 2: configuration of matrix C */
-    status = cusparseCreateMatDescr(&descrC);
-    assert(CUSPARSE_STATUS_SUCCESS == status);
+//     /* step 2: configuration of matrix C */
+//     status = cusparseCreateMatDescr(&descrC);
+//     assert(CUSPARSE_STATUS_SUCCESS == status);
 
-    cusparseSetMatIndexBase(descrC, CUSPARSE_INDEX_BASE_ZERO);
-    cusparseSetMatType(descrC, CUSPARSE_MATRIX_TYPE_GENERAL);
+//     cusparseSetMatIndexBase(descrC, CUSPARSE_INDEX_BASE_ZERO);
+//     cusparseSetMatType(descrC, CUSPARSE_MATRIX_TYPE_GENERAL);
 
-    //    cudaStat1 = cudaMalloc((void**)&d_A, sizeof(float) * lda * n);
-    cudaStat2 = cudaMalloc((void**)&d_csrRowPtrC, sizeof(int) * (m + 1));
-    assert(cudaSuccess == cudaStat1);
-    assert(cudaSuccess == cudaStat2);
+//     //    cudaStat1 = cudaMalloc((void**)&d_A, sizeof(float) * lda * n);
+//     cudaStat2 = cudaMalloc((void**)&d_csrRowPtrC, sizeof(int) * (m + 1));
+//     assert(cudaSuccess == cudaStat1);
+//     assert(cudaSuccess == cudaStat2);
 
-    /* step 3: query workspace */
-    //    cudaStat1 = cudaMemcpy(d_A, A, sizeof(float) * lda * n, cudaMemcpyHostToDevice);
-    //    assert(cudaSuccess == cudaStat1);
+//     /* step 3: query workspace */
+//     //    cudaStat1 = cudaMemcpy(d_A, A, sizeof(float) * lda * n, cudaMemcpyHostToDevice);
+//     //    assert(cudaSuccess == cudaStat1);
 
-    status = cusparseSpruneDense2csr_bufferSizeExt(  //
-        handle,                                      //
-        m,                                           //
-        n,                                           //
-        d_A,                                         //
-        lda,                                         //
-        &threshold,                                  //
-        descrC,                                      //
-        d_csrValC,                                   //
-        d_csrRowPtrC,                                //
-        d_csrColIndC,                                //
-        &lworkInBytes);
-    assert(CUSPARSE_STATUS_SUCCESS == status);
+//     status = cusparseSpruneDense2csr_bufferSizeExt(  //
+//         handle,                                      //
+//         m,                                           //
+//         n,                                           //
+//         d_A,                                         //
+//         lda,                                         //
+//         &threshold,                                  //
+//         descrC,                                      //
+//         d_csrValC,                                   //
+//         d_csrRowPtrC,                                //
+//         d_csrColIndC,                                //
+//         &lworkInBytes);
+//     assert(CUSPARSE_STATUS_SUCCESS == status);
 
-    //    printf("lworkInBytes (prune) = %lld \n", (long long)lworkInBytes);
+//     //    printf("lworkInBytes (prune) = %lld \n", (long long)lworkInBytes);
 
-    if (nullptr != d_work) {
-        cudaFree(d_work);
-    }
-    cudaStat1 = cudaMalloc((void**)&d_work, lworkInBytes);
-    assert(cudaSuccess == cudaStat1);
+//     if (nullptr != d_work) {
+//         cudaFree(d_work);
+//     }
+//     cudaStat1 = cudaMalloc((void**)&d_work, lworkInBytes);
+//     assert(cudaSuccess == cudaStat1);
 
-    /* step 4: compute csrRowPtrC and nnzC */
-    status = cusparseSpruneDense2csrNnz(  //
-        handle,                           //
-        m,                                //
-        n,                                //
-        d_A,                              //
-        lda,                              //
-        &threshold,                       //
-        descrC,                           //
-        d_csrRowPtrC,                     //
-        &nnzC,                            // host
-        d_work);
-    assert(CUSPARSE_STATUS_SUCCESS == status);
-    cudaStat1 = cudaDeviceSynchronize();
-    assert(cudaSuccess == cudaStat1);
+//     /* step 4: compute csrRowPtrC and nnzC */
+//     status = cusparseSpruneDense2csrNnz(  //
+//         handle,                           //
+//         m,                                //
+//         n,                                //
+//         d_A,                              //
+//         lda,                              //
+//         &threshold,                       //
+//         descrC,                           //
+//         d_csrRowPtrC,                     //
+//         &nnzC,                            // host
+//         d_work);
+//     assert(CUSPARSE_STATUS_SUCCESS == status);
+//     cudaStat1 = cudaDeviceSynchronize();
+//     assert(cudaSuccess == cudaStat1);
 
-    if (0 == nnzC) cout << log_info << "No outlier." << endl;
+//     if (0 == nnzC) cout << log_info << "No outlier." << endl;
 
-    /* step 5: compute csrColIndC and csrValC */
-    cudaStat1 = cudaMalloc((void**)&d_csrColIndC, sizeof(int) * nnzC);
-    cudaStat2 = cudaMalloc((void**)&d_csrValC, sizeof(float) * nnzC);
-    assert(cudaSuccess == cudaStat1);
-    assert(cudaSuccess == cudaStat2);
+//     /* step 5: compute csrColIndC and csrValC */
+//     cudaStat1 = cudaMalloc((void**)&d_csrColIndC, sizeof(int) * nnzC);
+//     cudaStat2 = cudaMalloc((void**)&d_csrValC, sizeof(float) * nnzC);
+//     assert(cudaSuccess == cudaStat1);
+//     assert(cudaSuccess == cudaStat2);
 
-    status = cusparseSpruneDense2csr(  //
-        handle,                        //
-        m,                             //
-        n,                             //
-        d_A,                           //
-        lda,                           //
-        &threshold,                    //
-        descrC,                        //
-        d_csrValC,                     //
-        d_csrRowPtrC,                  //
-        d_csrColIndC,                  //
-        d_work);
-    assert(CUSPARSE_STATUS_SUCCESS == status);
-    cudaStat1 = cudaDeviceSynchronize();
-    assert(cudaSuccess == cudaStat1);
+//     status = cusparseSpruneDense2csr(  //
+//         handle,                        //
+//         m,                             //
+//         n,                             //
+//         d_A,                           //
+//         lda,                           //
+//         &threshold,                    //
+//         descrC,                        //
+//         d_csrValC,                     //
+//         d_csrRowPtrC,                  //
+//         d_csrColIndC,                  //
+//         d_work);
+//     assert(CUSPARSE_STATUS_SUCCESS == status);
+//     cudaStat1 = cudaDeviceSynchronize();
+//     assert(cudaSuccess == cudaStat1);
 
-    /* step 6: output C */
-    //    csrRowPtrC = (int*)malloc(sizeof(int) * (m + 1));
-    //    csrColIndC = (int*)malloc(sizeof(int) * nnzC);
-    //    csrValC    = (float*)malloc(sizeof(float) * nnzC);
-    *csrRowPtrC = new int[m + 1];
-    *csrColIndC = new int[nnzC];
-    *csrValC    = new float[nnzC];
-    assert(nullptr != csrRowPtrC);
-    assert(nullptr != csrColIndC);
-    assert(nullptr != csrValC);
+//     /* step 6: output C */
+//     //    csrRowPtrC = (int*)malloc(sizeof(int) * (m + 1));
+//     //    csrColIndC = (int*)malloc(sizeof(int) * nnzC);
+//     //    csrValC    = (float*)malloc(sizeof(float) * nnzC);
+//     *csrRowPtrC = new int[m + 1];
+//     *csrColIndC = new int[nnzC];
+//     *csrValC    = new float[nnzC];
+//     assert(nullptr != csrRowPtrC);
+//     assert(nullptr != csrColIndC);
+//     assert(nullptr != csrValC);
 
-    cudaStat1 = cudaMemcpy(*csrRowPtrC, d_csrRowPtrC, sizeof(int) * (m + 1), cudaMemcpyDeviceToHost);
-    cudaStat2 = cudaMemcpy(*csrColIndC, d_csrColIndC, sizeof(int) * nnzC, cudaMemcpyDeviceToHost);
-    cudaStat3 = cudaMemcpy(*csrValC, d_csrValC, sizeof(float) * nnzC, cudaMemcpyDeviceToHost);
-    assert(cudaSuccess == cudaStat1);
-    assert(cudaSuccess == cudaStat2);
-    assert(cudaSuccess == cudaStat3);
+//     cudaStat1 = cudaMemcpy(*csrRowPtrC, d_csrRowPtrC, sizeof(int) * (m + 1), cudaMemcpyDeviceToHost);
+//     cudaStat2 = cudaMemcpy(*csrColIndC, d_csrColIndC, sizeof(int) * nnzC, cudaMemcpyDeviceToHost);
+//     cudaStat3 = cudaMemcpy(*csrValC, d_csrValC, sizeof(float) * nnzC, cudaMemcpyDeviceToHost);
+//     assert(cudaSuccess == cudaStat1);
+//     assert(cudaSuccess == cudaStat2);
+//     assert(cudaSuccess == cudaStat3);
 
-    //    printCsr(m, n, nnzC, descrC, csrValC, csrRowPtrC, csrColIndC, "C");
+//     //    printCsr(m, n, nnzC, descrC, csrValC, csrRowPtrC, csrColIndC, "C");
 
-    /* free resources */
-    if (d_A) cudaFree(d_A);
-    if (d_csrRowPtrC) cudaFree(d_csrRowPtrC);
-    if (d_csrColIndC) cudaFree(d_csrColIndC);
-    if (d_csrValC) cudaFree(d_csrValC);
+//     /* free resources */
+//     if (d_A) cudaFree(d_A);
+//     if (d_csrRowPtrC) cudaFree(d_csrRowPtrC);
+//     if (d_csrColIndC) cudaFree(d_csrColIndC);
+//     if (d_csrValC) cudaFree(d_csrValC);
 
-    //    if (csrRowPtrC) free(csrRowPtrC);
-    //    if (csrColIndC) free(csrColIndC);
-    //    if (csrValC) free(csrValC);
+//     //    if (csrRowPtrC) free(csrRowPtrC);
+//     //    if (csrColIndC) free(csrColIndC);
+//     //    if (csrValC) free(csrValC);
 
-    //    for (auto i = 0; i < 200; i++) cout << i << "\t" << csrColIndC[i] << "\t" << csrValC[i] << endl;
+//     //    for (auto i = 0; i < 200; i++) cout << i << "\t" << csrColIndC[i] << "\t" << csrValC[i] << endl;
 
-    if (handle) cusparseDestroy(handle);
-    if (stream) cudaStreamDestroy(stream);
-    if (descrC) cusparseDestroyMatDescr(descrC);
+//     if (handle) cusparseDestroy(handle);
+//     if (stream) cudaStreamDestroy(stream);
+//     if (descrC) cusparseDestroyMatDescr(descrC);
 
-    //    cudaDeviceReset();
-};
+//     //    cudaDeviceReset();
+// }
 
-template <typename T>
-size_t* cuSZ::workflow::DeflateOutlier(T* d_outlier, T* outlier, int* meta, size_t len, size_t BLK, size_t nBLK, int blockDim)
-{
-    // get to know num of non-zeros
-    int* d_nnz;
-    int  nnz = 0;
-    cudaMalloc(&d_nnz, sizeof(int));
-    cudaMemset(d_nnz, 0, sizeof(int));
-    CountOutlier<<<(len - 1) / 256 + 1, 256>>>(d_outlier, d_nnz, len);
-    cudaDeviceSynchronize();
-    cudaMemcpy(&nnz, d_nnz, sizeof(int), cudaMemcpyDeviceToHost);
-    // deflate
-    meta = new int[nBLK]();
-    int* d_meta;
-    cudaMalloc(&d_meta, nBLK * sizeof(int));
-    cudaMemset(d_meta, 0, nBLK = sizeof(int));
-    cudaDeviceSynchronize();
-    // copy back to host
-    outlier = new T[nnz]();
+// template <typename T>
+// size_t* cuSZ::workflow::DeflateOutlier(T* d_outlier, T* outlier, int* meta, size_t len, size_t BLK, size_t nBLK, int blockDim)
+// {
+//     // get to know num of non-zeros
+//     int* d_nnz;
+//     int  nnz = 0;
+//     cudaMalloc(&d_nnz, sizeof(int));
+//     cudaMemset(d_nnz, 0, sizeof(int));
+//     CountOutlier<<<(len - 1) / 256 + 1, 256>>>(d_outlier, d_nnz, len);
+//     cudaDeviceSynchronize();
+//     cudaMemcpy(&nnz, d_nnz, sizeof(int), cudaMemcpyDeviceToHost);
+//     // deflate
+//     meta = new int[nBLK]();
+//     int* d_meta;
+//     cudaMalloc(&d_meta, nBLK * sizeof(int));
+//     cudaMemset(d_meta, 0, nBLK = sizeof(int));
+//     cudaDeviceSynchronize();
+//     // copy back to host
+//     outlier = new T[nnz]();
 
-    cudaMemcpy(meta, d_meta, nBLK * sizeof(int), cudaMemcpyDeviceToHost);
-    for (auto i = 0, begin = 0; i < nBLK; i++) {
-        cudaMemcpy(outlier + begin, d_outlier + i * BLK, meta[i] * sizeof(T), cudaMemcpyDeviceToHost);
-        begin += meta[i];
-    }
+//     cudaMemcpy(meta, d_meta, nBLK * sizeof(int), cudaMemcpyDeviceToHost);
+//     for (auto i = 0, begin = 0; i < nBLK; i++) {
+//         cudaMemcpy(outlier + begin, d_outlier + i * BLK, meta[i] * sizeof(T), cudaMemcpyDeviceToHost);
+//         begin += meta[i];
+//     }
 
-    return outlier;
-}
+//     return outlier;
+// }
 
 template <typename T, typename Q>
 void cuSZ::workflow::VerifyHuffman(string const& fi, size_t len, Q* xbcode, int chunk_size, size_t* dims_L16, double* ebs_L4)
@@ -449,7 +451,7 @@ void cuSZ::workflow::Compress(
     std::string& fi,
     size_t*      dims_L16,
     double*      ebs_L4,
-    size_t&      num_outlier,
+    size_t&      nnz_outlier,
     size_t&      n_bits,
     size_t&      n_uInt,
     size_t&      huffman_metadata_size,
@@ -462,9 +464,20 @@ void cuSZ::workflow::Compress(
     fo_bcode        = fi + ".b" + std::to_string(bw);
     fo_outlier_new  = fi + ".b" + std::to_string(bw) + "outlier_new";
 
-    size_t len    = dims_L16[LEN];
-    auto   data   = io::ReadBinaryFile<T>(fi, len);
-    T*     d_data = mem::CreateDeviceSpaceAndMemcpyFromHost(data, len);
+    // TODO to use a struct
+    size_t len         = dims_L16[LEN];
+    auto   padded_edge = GetEdgeOfReinterpretedSquare(len);
+    auto   padded_len  = padded_edge * padded_edge;
+
+    cout << log_info << "padded edge:\t" << padded_edge << "\tpadded_len:\t" << padded_len << endl;
+
+    // old: use the orignal length as it is
+    // auto data   = io::ReadBinaryFile<T>(fi, len);
+    // T*   d_data = mem::CreateDeviceSpaceAndMemcpyFromHost(data, len);
+    // new: use padded length for outlier gather/scatter
+    auto data = new T[padded_len]();
+    io::ReadBinaryFile<T>(fi, data, len);
+    T* d_data = mem::CreateDeviceSpaceAndMemcpyFromHost(data, padded_len);
 
     //    for (auto i = 150; i < 200; i++) cout << data[i] << endl;
 
@@ -481,27 +494,47 @@ void cuSZ::workflow::Compress(
     PdQ(d_data, d_bcode, dims_L16, ebs_L4);
 
     // dealing with outlier
-    int*   outlier_dummy_csrRowPtrC = nullptr;
-    int*   outlier_index_csrColIndC = nullptr;  // column major, real index
-    float* outlier_value_csrValC    = nullptr;  // outlier values; TODO template
-    int    nnzC                     = 0;
+    int*   outlier_csrRowPtrC = nullptr;  //
+    int*   outlier_csrColIndC = nullptr;  // column major, real index
+    float* outlier_csrValC    = nullptr;  // outlier values; TODO template
+    int    nnzC               = 0;
 
-    DeflateOutlierUsingCuSparse(d_data, len, nnzC, &outlier_dummy_csrRowPtrC, &outlier_index_csrColIndC, &outlier_value_csrValC);
+    // old, 1D
+    // DeflateOutlierUsingCuSparse(d_data, len, nnzC, &outlier_csrRowPtrC, &outlier_csrColIndC, &outlier_csrValC);
+    // new, reinterpreted 2D
+    DeflateOutlierUsingCuSparse(d_data, padded_len, padded_edge, nnzC, &outlier_csrRowPtrC, &outlier_csrColIndC, &outlier_csrValC);
 
-    num_outlier      = nnzC;  // TODO temporarily nnzC is not archived because num_outlier is available out of this scope
+    nnz_outlier = nnzC;  // TODO temporarily nnzC is not archived because num_outlier is available out of this scope
+    /*
+    // old output of outlier as spm
     auto outlier_bin = new uint8_t[nnzC * (sizeof(int) + sizeof(float))];
-    memcpy(outlier_bin, (uint8_t*)outlier_index_csrColIndC, nnzC * sizeof(int));
-    memcpy(outlier_bin + nnzC * sizeof(int), (uint8_t*)outlier_value_csrValC, nnzC * sizeof(float));
-    cout << log_info << "nnz/num.outlier:\t" << num_outlier << "\t(" << (num_outlier / 1.0 / len * 100) << "%)" << endl;
-    cout << log_info << "Dumping outlier..." << endl;
+    memcpy(outlier_bin, (uint8_t*)outlier_csrColIndC, nnzC * sizeof(int));
+    memcpy(outlier_bin + nnzC * sizeof(int), (uint8_t*)outlier_csrValC, nnzC * sizeof(float));
+    cout << log_info << "nnz/num.outlier:\t" << nnz_outlier << "\t(" << (nnz_outlier / 1.0 / len * 100) << "%)" << endl;
+    // cout << log_info << "Dumping outlier..." << endl;
     io::WriteBinaryFile(outlier_bin, nnzC * (sizeof(int) + sizeof(float)), &fo_outlier_new);
+    */
+    // new output of outlier as spm
+    // clang-format off
+    auto bytelen_csrRowPtrC = sizeof(int)   * (padded_edge + 1);
+    auto bytelen_csrColIndC = sizeof(int)   *  nnzC;
+    auto bytelen_csrValC    = sizeof(float) *  nnzC;
+    auto bytelen_total      = bytelen_csrRowPtrC + bytelen_csrColIndC + bytelen_csrValC;
+    auto outlier_bin        = new uint8_t[bytelen_total];
+    memcpy(outlier_bin,                                           (uint8_t*)outlier_csrColIndC, bytelen_csrRowPtrC);
+    memcpy(outlier_bin + bytelen_csrRowPtrC,                      (uint8_t*)outlier_csrValC,    bytelen_csrColIndC);
+    memcpy(outlier_bin + bytelen_csrRowPtrC + bytelen_csrColIndC, (uint8_t*)outlier_csrColIndC, bytelen_csrValC);
+    // clang-format on
+
+    cout << log_info << "outlier_bin byte length:\t" << bytelen_total << endl;
+    cout << log_info << "nnz/num.outlier:\t" << nnz_outlier << "\t(" << (nnz_outlier / 1.0 / len * 100) << "%)" << endl;
 
     Q* bcode;
     if (ap->skip_huffman) {
-        cout << log_info << "Skipping Huffman..." << endl;
+        // cout << log_info << "Skipping Huffman..." << endl;
         bcode = mem::CreateHostSpaceAndMemcpyFromDevice(d_bcode, len);
         io::WriteBinaryFile(bcode, len, &fo_bcode);
-        cout << log_info << "Compression finished.\n" << endl;
+        cout << log_info << "Compression finished, saved quant.code (Huffman skipped).\n" << endl;
         return;
     }
     typedef std::tuple<size_t, size_t, size_t> tuple3ul;
@@ -511,13 +544,13 @@ void cuSZ::workflow::Compress(
 
     std::tie(n_bits, n_uInt, huffman_metadata_size) = t;
 
-    cout << log_info << "Compression finished.\n" << endl;
+    cout << log_info << "Compression finished, saved Huffman encoded quant.code.\n" << endl;
 
     // clean up
     delete[] data;
-    delete[] outlier_index_csrColIndC;
-    delete[] outlier_value_csrValC;
-    delete[] outlier_dummy_csrRowPtrC;
+    delete[] outlier_csrColIndC;
+    delete[] outlier_csrValC;
+    delete[] outlier_csrRowPtrC;
     delete[] outlier_bin;
 
     cudaFree(d_data);
@@ -528,7 +561,7 @@ void cuSZ::workflow::Decompress(
     std::string& fi,  //
     size_t*      dims_L16,
     double*      ebs_L4,
-    size_t&      num_outlier,
+    size_t&      nnz_outlier,
     size_t&      total_bits,
     size_t&      total_uInt,
     size_t&      huffman_metadata_size,
@@ -536,14 +569,19 @@ void cuSZ::workflow::Decompress(
 {
     //    string f_archive = fi + ".sza"; // TODO
     string f_extract = ap->alt_xout_name.empty() ? fi + ".szx" : ap->alt_xout_name;
-    string fi_bcode_base, fi_bcode_after_huffman, fi_outlier, fi_outlier_new;
+    string fi_bcode_base, fi_bcode_after_huffman, fi_outlier, fi_outlier_as_cuspm;
 
-    fi_bcode_base  = fi + ".b" + std::to_string(sizeof(Q) * 8);
-    fi_outlier_new = fi_bcode_base + "outlier_new";
+    fi_bcode_base       = fi + ".b" + std::to_string(sizeof(Q) * 8);
+    fi_outlier_as_cuspm = fi_bcode_base + "outlier_new";
     //    fi_bcode_after_huffman = fi_bcode_base + ".x";
 
     auto dict_size = dims_L16[CAP];
     auto len       = dims_L16[LEN];
+
+    // TODO to use a struct
+    // add padding
+    auto padded_edge = GetEdgeOfReinterpretedSquare(len);
+    auto padded_len  = padded_edge * padded_edge;
 
     cout << log_info << "Commencing decompression..." << endl;
 
@@ -563,19 +601,54 @@ void cuSZ::workflow::Decompress(
     }
     auto d_bcode = mem::CreateDeviceSpaceAndMemcpyFromHost(xbcode, len);
 
-#ifdef OLD_OUTLIER_METHOD
-    auto outlier   = io::ReadBinaryFile<T>(fi_outlier, len);
-    auto d_outlier = mem::CreateDeviceSpaceAndMemcpyFromHost(outlier, len);
-#else
-    auto outlier_bin = io::ReadBinaryFile<uint8_t>(fi_outlier_new, num_outlier * (sizeof(int) + sizeof(float)));
-    auto outlier_idx = reinterpret_cast<int*>(outlier_bin);
-    auto outlier_val = reinterpret_cast<float*>(outlier_bin + num_outlier * sizeof(int));  // TODO template
+    /*
+    // #ifdef OLD_OUTLIER_METHOD
+    //     auto outlier   = io::ReadBinaryFile<T>(fi_outlier, len);
+    //     auto d_outlier = mem::CreateDeviceSpaceAndMemcpyFromHost(outlier, len);
+    // #else
+    auto outlier_bin = io::ReadBinaryFile<uint8_t>(fi_outlier_as_cuspm, nnz_outlier * (sizeof(int) + sizeof(float)));
+    auto outlier_csrColIndC = reinterpret_cast<int*>(outlier_bin);
+    auto outlier_csrValC = reinterpret_cast<float*>(outlier_bin + nnz_outlier * sizeof(int));  // TODO template
     auto outlier     = new T[len]();
-    for (auto i = 0; i < num_outlier; i++) outlier[outlier_idx[i]] = outlier_val[i];
+    for (auto i = 0; i < nnz_outlier; i++) outlier[outlier_csrColIndC[i]] = outlier_csrValC[i];
     auto d_outlier = mem::CreateDeviceSpaceAndMemcpyFromHost(outlier, len);
-#endif
+    // #endif
+    */
 
-    auto d_xdata = mem::CreateCUDASpace<T>(len);
+    // clang-format off
+    auto bytelen_csrRowPtrC  = sizeof(int)   * (padded_edge + 1);
+    auto bytelen_csrColIndC  = sizeof(int)   *  nnz_outlier;
+    auto bytelen_csrValC     = sizeof(float) *  nnz_outlier;
+    auto bytelen_outlier_bin = bytelen_csrRowPtrC + bytelen_csrColIndC + bytelen_csrValC;
+    auto outlier_bin         = io::ReadBinaryFile<uint8_t>(fi_outlier_as_cuspm, bytelen_outlier_bin);
+    auto outlier_csrRowPtrC  = reinterpret_cast<int*  >(outlier_bin);
+    auto outlier_csrColIndC  = reinterpret_cast<int*  >(outlier_bin + bytelen_csrRowPtrC);
+    auto outlier_csrValC     = reinterpret_cast<float*>(outlier_bin + bytelen_csrRowPtrC + bytelen_csrColIndC);  // TODO template
+    // clang-format on
+
+    cout << log_dbg << "outlier_bin byte length:\t" << bytelen_outlier_bin << endl;
+    cout << log_info << "Extracting outlier (from CSR format)..." << endl;
+
+    for (auto i = 0; i < nnz_outlier + 1; i++) cout << outlier_csrRowPtrC[i] << endl;
+
+    auto outlier = new T[padded_len]();
+    auto gi      = 0;
+    auto irow    = 0;
+    auto lda     = padded_edge;
+    while (irow < nnz_outlier) {
+        cout << "irow\t" << irow << endl;
+        while (gi < outlier_csrRowPtrC[irow + 1]) {
+            outlier[lda * irow + outlier_csrColIndC[gi]] = outlier_csrValC[gi];
+            gi++;
+        }
+        irow++;
+    }
+
+    cout << log_info << "Finished extracting outlier (from CSR format)..." << endl;
+
+    // TODO merge d_outlier and d_data
+    auto d_outlier = mem::CreateDeviceSpaceAndMemcpyFromHost(outlier, len);  // okay to use the original len
+    auto d_xdata   = mem::CreateCUDASpace<T>(len);
     ReversedPdQ(d_xdata, d_bcode, d_outlier, dims_L16, ebs_L4[EBx2]);
     auto xdata = mem::CreateHostSpaceAndMemcpyFromDevice(d_xdata, len);
 
@@ -590,7 +663,7 @@ void cuSZ::workflow::Decompress(
                         + huffman_metadata_size;  // chunking metadata and reverse codebook
     else
         archive_size += len * sizeof(Q);
-    archive_size += num_outlier * (sizeof(T) + sizeof(int));
+    archive_size += nnz_outlier * (sizeof(T) + sizeof(int));
 
     // TODO g++ and clang++ use mangled type_id name, add macro
     // https://stackoverflow.com/a/4541470/8740097

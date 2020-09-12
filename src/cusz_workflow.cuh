@@ -15,13 +15,19 @@ void PdQ(T*, Q*, size_t*, double*);
 template <typename T, typename Q>
 void ReversedPdQ(T*, Q*, T*, size_t*, double);
 
-template <typename T>
-__global__ void Condenser(T*, int*, size_t, size_t);
+// template <typename T>
+// __global__ void Condenser(T*, int*, size_t, size_t);
 
 void DeflateOutlierUsingCuSparse(float*, size_t, int&, int**, int**, float**);
 
-template <typename T>
-size_t* DeflateOutlier(T*, T*, int*, size_t, size_t, size_t, int);
+inline size_t GetEdgeOfReinterpretedSquare(size_t l)
+{
+    auto sl = static_cast<size_t>(sqrt(l));
+    return ((sl - 1) / 2 + 1) * 2;
+};
+
+// template <typename T>
+// size_t* DeflateOutlier(T*, T*, int*, size_t, size_t, size_t, int);
 
 template <typename T, typename Q>
 void VerifyHuffman(string const&, size_t, Q*, int, size_t*, double*);
