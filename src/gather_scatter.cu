@@ -11,8 +11,8 @@ using std::endl;
 #include "format.hh"
 #include "gather_scatter.cuh"
 
-template <DType>
-void new_gather(
+template <typename DType>
+void cuSZ::impl::new_gather(
     DType*    d_A,  //
     size_t    len,
     const int m,
@@ -92,7 +92,7 @@ void new_gather(
 }
 
 template <typename DType>
-void new_scatter(
+void cuSZ::impl::new_scatter(
     DType*    d_A,  //
     size_t    len,
     const int m,

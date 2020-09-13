@@ -1,5 +1,3 @@
-
-#include <bits/stdint-uintn.h>
 #include <cuda_runtime.h>
 #include <cusparse.h>
 
@@ -216,24 +214,13 @@ void cuSZ::impl::ArchiveOutlier(T* d_data, size_t len, size_t lda, int* nnz_outl
     size_t   l_total;
     uint8_t* outlier_bin;
 
-    // #ifndef SPM2D
-    //     // old, 1D
-    //     ::cuSZ::impl::GatherOutlierUsingCusparse(d_data, len, nnzC, &csrRowPtrC, &csrColIndC, &csrValC);
-    //     l_total     = nnzC * (sizeof(int) + sizeof(float));
-    //     outlier_bin = new uint8_t[l_total];
-    //     memcpy(outlier_bin, (uint8_t*)csrColIndC, nnzC * sizeof(int));
-    //     memcpy(outlier_bin + nnzC * sizeof(int), (uint8_t*)csrValC, nnzC * sizeof(float));
-    // #else
-    // new, 2D
-    ::cuSZ::impl::GatherOutlierUsingCusparse(d_data, len, lda, nnzC, &csrRowPtrC, &csrColIndC, &csrValC);
+    ::cuSZ::impl::new_gather(d_data, len, lda, nnzC, &csrRowPtrC, &csrColIndC, &csrValC);
     // clang-format off
     auto l_csrRowPtrC = sizeof(int)   * (lda+ 1);
     auto l_csrColIndC = sizeof(int)   *  nnzC;
     auto l_csrValC    = sizeof(float) *  nnzC;
-
     l_total      = l_csrRowPtrC + l_csrColIndC + l_csrValC;
     outlier_bin  = new uint8_t[l_total];
-
     memcpy(outlier_bin,                               (uint8_t*)csrColIndC, l_csrRowPtrC);
     memcpy(outlier_bin + l_csrRowPtrC,                (uint8_t*)csrValC,    l_csrColIndC);
     memcpy(outlier_bin + l_csrRowPtrC + l_csrColIndC, (uint8_t*)csrColIndC, l_csrValC   );
@@ -253,45 +240,21 @@ void cuSZ::impl::ArchiveOutlier(T* d_data, size_t len, size_t lda, int* nnz_outl
 template <typename T>
 T* cuSZ::impl::ExtractOutlier(size_t len, size_t lda, int* nnz_outlier, std::string* fi_outlier_as_cuspm)
 {
-    /*
-     // #ifdef OLD_OUTLIER_METHOD
-     //     auto outlier   = io::ReadBinaryFile<T>(fi_outlier, len);
-     //     auto d_outlier = mem::CreateDeviceSpaceAndMemcpyFromHost(outlier, len);
-     // #else
-     auto outlier_bin = io::ReadBinaryFile<uint8_t>(fi_outlier_as_cuspm, nnz_outlier * (sizeof(int) + sizeof(float)));
-     auto outlier_csrColIndC = reinterpret_cast<int*>(outlier_bin);
-     auto outlier_csrValC = reinterpret_cast<float*>(outlier_bin + nnz_outlier * sizeof(int));  // TODO template
-     auto outlier     = new T[len]();
-     for (auto i = 0; i < nnz_outlier; i++) outlier[outlier_csrColIndC[i]] = outlier_csrValC[i];
-     auto d_outlier = mem::CreateDeviceSpaceAndMemcpyFromHost(outlier, len);
-     // #endif
-     */
-
     // clang-format off
-    auto l_csrRowPtrC  = sizeof(int)   * (lda + 1);
-    auto l_csrColIndC  = sizeof(int)   *  *nnz_outlier;
-    auto l_csrValC     = sizeof(float) *  *nnz_outlier;
-    auto l_outlier_bin = l_csrRowPtrC + l_csrColIndC + l_csrValC;
+    auto l_csrRowPtr   = sizeof(int)   * (lda + 1);
+    auto l_csrColInd   = sizeof(int)   *  *nnz_outlier;
+    auto l_csrVal      = sizeof(float) *  *nnz_outlier;
+    auto l_outlier_bin = l_csrRowPtr + l_csrColInd + l_csrVal;
     auto outlier_bin   = io::ReadBinaryFile<uint8_t>(*fi_outlier_as_cuspm, l_outlier_bin);
-    auto csrRowPtrC    = reinterpret_cast<int*  >(outlier_bin);
-    auto csrColIndC    = reinterpret_cast<int*  >(outlier_bin + l_csrRowPtrC);
-    auto csrValC       = reinterpret_cast<float*>(outlier_bin + l_csrRowPtrC + l_csrColIndC);  // TODO template
+    auto csrRowPtr     = reinterpret_cast<int*  >(outlier_bin);
+    auto csrColInd     = reinterpret_cast<int*  >(outlier_bin + l_csrRowPtr);
+    auto csrVal        = reinterpret_cast<float*>(outlier_bin + l_csrRowPtr + l_csrColInd);  // TODO template
     // clang-format on
 
     cout << log_dbg << "outlier_bin byte length:\t" << l_outlier_bin << endl;
     cout << log_info << "Extracting outlier (from CSR format)..." << endl;
 
-    auto outlier = new T[len]();
-    auto gi      = 0;
-    auto irow    = 0;
-    while (irow < lda) {
-        cout << "irow\t" << irow << endl;
-        while (gi < csrRowPtrC[irow + 1]) {
-            outlier[irow + lda * csrColIndC[gi]] = csrValC[gi];
-            gi++;
-        }
-        irow++;
-    }
+    ::cuSZ::impl::new_scatter(d_A, len, m, nnz, &csrRowPtr, &csrColInd, &csrVal);
 
     cout << log_info << "Finished extracting outlier (from CSR format)..." << endl;
 
