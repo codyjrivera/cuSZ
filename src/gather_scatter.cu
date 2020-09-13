@@ -11,7 +11,7 @@ using std::endl;
 #include "format.hh"
 #include "gather_scatter.cuh"
 
-void cuSZ::workflow::DeflateOutlierUsingCuSparse(
+void cuSZ::impl::GatherOutlierUsingCusparse(
     float*    d_A,  //
     size_t    len,
     const int m,
@@ -177,7 +177,7 @@ void cuSZ::workflow::DeflateOutlierUsingCuSparse(
     //    cudaDeviceReset();
 }
 
-void cuSZ::workflow::DeflateOutlierUsingCuSparse(
+void cuSZ::impl::GatherOutlierUsingCusparse(
     float*  d_A,  //
     size_t  len,
     int&    nnzC,

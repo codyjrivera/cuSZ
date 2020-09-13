@@ -4,9 +4,9 @@
 #include <cusparse.h>
 
 namespace cuSZ {
-namespace workflow {
+namespace impl {
 
-void DeflateOutlierUsingCuSparse(
+void GatherOutlierUsingCusparse(
     float*  d_A,  //
     size_t  len,
     int&    nnzC,
@@ -14,7 +14,7 @@ void DeflateOutlierUsingCuSparse(
     int**   csrColIndC,
     float** csrValC);
 
-void DeflateOutlierUsingCuSparse(
+void GatherOutlierUsingCusparse(
     float*    d_A,  //
     size_t    len,
     const int m,  // m == n, and m is lda
@@ -23,5 +23,5 @@ void DeflateOutlierUsingCuSparse(
     int**     csrColIndC,
     float**   csrValC);
 
-}  // namespace workflow
+}  // namespace impl
 }  // namespace cuSZ
