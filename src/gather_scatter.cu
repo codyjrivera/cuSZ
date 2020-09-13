@@ -11,6 +11,142 @@ using std::endl;
 #include "format.hh"
 #include "gather_scatter.cuh"
 
+template <DType>
+void new_gather(
+    DType*    d_A,  //
+    size_t    len,
+    const int m,
+    int&      nnz,
+    int**     csrRowPtr,
+    int**     csrColInd,
+    float**   csrVal)
+{
+    cusparseHandle_t   handle      = nullptr;
+    cudaStream_t       stream      = nullptr;
+    cusparseMatDescr_t descr       = nullptr;
+    cusparseStatus_t   status      = CUSPARSE_STATUS_SUCCESS;
+    cudaError_t        cudaStat1   = cudaSuccess;
+    cudaError_t        cudaStat2   = cudaSuccess;
+    cudaError_t        cudaStat3   = cudaSuccess;
+    const int          lda         = m;
+    const int          n           = m;
+    int*               d_csrRowPtr = nullptr;
+    int*               d_csrColInd = nullptr;
+    float*             d_csrVal    = nullptr;
+
+    cudaStat1 = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);  // 1. create stream
+    assert(cudaSuccess == cudaStat1);                                       //
+    status = cusparseCreate(&handle);                                       // 2. create handle
+    assert(CUSPARSE_STATUS_SUCCESS == status);                              //
+    status = cusparseSetStream(handle, stream);                             // 3. bind stream
+    assert(CUSPARSE_STATUS_SUCCESS == status);                              //
+    status = cusparseCreateMatDescr(&descr);                                // 4. create descr
+    assert(CUSPARSE_STATUS_SUCCESS == status);                              //
+    cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO);               // zero based
+    cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL);                // type
+
+    // query workspace
+    // clang-format off
+    auto cudaStat1 = cudaMalloc((void**)&d_csrRowPtr, sizeof(int)   * (m + 1));
+    auto cudaStat2 = cudaMalloc((void**)&d_csrColInd, sizeof(int)   * nnz    );
+    auto cudaStat3 = cudaMalloc((void**)&d_csrVal,    sizeof(float) * nnz    );
+    // clang-format on
+    assert(cudaSuccess == cudaStat1);
+    assert(cudaSuccess == cudaStat2);
+    assert(cudaSuccess == cudaStat3);
+
+    // compute nnz
+    int* d_nnzPerRow;
+    status = cusparseCnnz(
+        handle, CUSPARSE_DIRECTION_ROW,  // parsed by row
+        m, n, descr, d_A, lda,           // descrption of d_A
+        d_nnzPerRow, &nnz);              // output
+    assert(CUSPARSE_STATUS_SUCCESS == status);
+
+    // step 5: dense to csr
+    status = cusparseSdense2csr(
+        handle,                         //
+        m, n, descr, d_A, lda,          // descritpion of d_A
+        d_nnzPerRow,                    // prefileld by nnz() func
+        csrVal, csrRowPtr, csrColInd);  // output
+    assert(CUSPARSE_STATUS_SUCCESS == status);
+
+    // clang-format off
+    cudaStat1 = cudaMemcpy(*csrRowPtr, d_csrRowPtr, sizeof(int)   * (m + 1), cudaMemcpyDeviceToHost);
+    cudaStat2 = cudaMemcpy(*csrColInd, d_csrColInd, sizeof(int)   *  nnz,    cudaMemcpyDeviceToHost);
+    cudaStat3 = cudaMemcpy(*csrVal,    d_csrVal,    sizeof(float) *  nnz,    cudaMemcpyDeviceToHost);
+    // clang-format on
+    assert(cudaSuccess == cudaStat1);
+    assert(cudaSuccess == cudaStat2);
+    assert(cudaSuccess == cudaStat3);
+
+    // clean up
+    if (d_csrRowPtr) cudaFree(d_csrRowPtr);
+    if (d_csrColInd) cudaFree(d_csrColInd);
+    if (d_csrValC) cudaFree(d_csrValC);
+    if (d_nnzPerRow) cudaFree(d_nnzPerRow);
+
+    if (handle) cusparseDestroy(handle);
+    if (stream) cudaStreamDestroy(stream);
+    if (descrC) cusparseDestroyMatDescr(descr);
+}
+
+template <typename DType>
+void new_scatter(
+    DType*    d_A,  //
+    size_t    len,
+    const int m,
+    int&      nnz,
+    int**     csrRowPtr,
+    int**     csrColInd,
+    float**   csrVal)
+{
+    cusparseHandle_t   handle      = nullptr;
+    cusparseMatDescr_t descr       = nullptr;
+    cusparseStatus_t   status      = CUSPARSE_STATUS_SUCCESS;
+    cudaError_t        cudaStat1   = cudaSuccess;
+    cudaError_t        cudaStat2   = cudaSuccess;
+    cudaError_t        cudaStat3   = cudaSuccess;
+    const int          lda         = m;
+    const int          n           = m;
+    int*               d_csrRowPtr = nullptr;
+    int*               d_csrColInd = nullptr;
+    float*             d_csrVal    = nullptr;
+
+    cudaStat1 = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);  // 1. create stream
+    assert(cudaSuccess == cudaStat1);                                       //
+    status = cusparseCreate(&handle);                                       // 2. create handle
+    assert(CUSPARSE_STATUS_SUCCESS == status);                              //
+    status = cusparseSetStream(handle, stream);                             // 3. bind stream
+    assert(CUSPARSE_STATUS_SUCCESS == status);                              //
+    status = cusparseCreateMatDescr(&descr);                                // 4. create descr
+    assert(CUSPARSE_STATUS_SUCCESS == status);                              //
+    cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO);               //
+    cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL);                //
+
+    // set space
+    // clang-format off
+    cudaStat1 = cudaMemcpy(d_csrRowPtr, *csrRowPtr, sizeof(int)   * (m + 1), cudaMemcpyHostToDevice);
+    cudaStat2 = cudaMemcpy(d_csrColInd, *csrColInd, sizeof(int)   *  nnz,    cudaMemcpyHostToDevice);
+    cudaStat3 = cudaMemcpy(d_csrVal,    *csrVal,    sizeof(float) *  nnz,    cudaMemcpyHostToDevice);
+    // clang-format on
+    assert(cudaSuccess == cudaStat1);
+    assert(cudaSuccess == cudaStat2);
+    assert(cudaSuccess == cudaStat3);
+
+    // fill
+    status = cusparseScsr2dense(handle, m, n, descr, d_csrVal, d_csrRowPtr, d_csrColInd, d_A, lda);
+    assert(CUSPARSE_STATUS_SUCCESS == status);
+
+    if (d_csrRowPtr) cudaFree(d_csrRowPtr);
+    if (d_csrColInd) cudaFree(d_csrColInd);
+    if (d_csrValC) cudaFree(d_csrVal);
+
+    if (handle) cusparseDestroy(handle);
+    if (stream) cudaStreamDestroy(stream);
+    if (descrC) cusparseDestroyMatDescr(descr);
+}
+
 void cuSZ::impl::GatherOutlierUsingCusparse(
     float*    d_A,  //
     size_t    len,
@@ -27,18 +163,17 @@ void cuSZ::impl::GatherOutlierUsingCusparse(
     cudaError_t        cudaStat1 = cudaSuccess;
     cudaError_t        cudaStat2 = cudaSuccess;
     cudaError_t        cudaStat3 = cudaSuccess;
-    //    cudaError_t        cudaStat4 = cudaSuccess;
-    //    cudaError_t        cudaStat5 = cudaSuccess;
-    // const int m   = 1;
-    // const int n   = len;
+    // cudaError_t cudaStat4 = cudaSuccess;
+    // cudaError_t cudaStat5 = cudaSuccess;
+    // const int m           = 1;
+    // const int n           = len;
     const int lda = m;
     const int n   = m;  // square
 
-    //    int*   csrRowPtrC = nullptr;
-    //    int*   csrColIndC = nullptr;
-    //    float* csrValC    = nullptr;
-
-    //    float* d_A          = nullptr;
+    // int*   csrRowPtrC = nullptr;
+    // int*   csrColIndC = nullptr;
+    // float* csrValC    = nullptr;
+    // float* d_A        = nullptr;
     int*   d_csrRowPtrC = nullptr;
     int*   d_csrColIndC = nullptr;
     float* d_csrValC    = nullptr;
