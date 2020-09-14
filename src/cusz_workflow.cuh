@@ -45,10 +45,10 @@ template <typename T, typename Q>
 void ReversedPdQ(T*, Q*, T*, size_t*, double);
 
 template <typename T>
-void ArchiveOutlier(T* d_data, size_t padded_len, size_t padded_edge, int* nnz_outlier, std::string*);
+void ArchiveAsSpM(T* d_data, size_t padded_len, size_t padded_edge, int* nnz_outlier, std::string*);
 
 template <typename T>
-T* ExtractOutlier(size_t padded_len, size_t padded_edge, int* nnz_outlier, std::string*);
+T* ExtractFromSpM(size_t padded_len, size_t padded_edge, int* nnz_outlier, std::string*);
 
 template <typename T, typename Q>
 void VerifyHuffman(string const&, size_t, Q*, int, size_t*, double*);

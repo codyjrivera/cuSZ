@@ -167,7 +167,7 @@ void cuSZ::impl::VerifyHuffman(string const& fi, size_t len, Q* xbcode, int chun
         cout << log_info << "Decoded correctly." << endl;
 
     if (count != 0) {
-        //        auto chunk_size = ap->huffman_chunk;
+        // auto chunk_size = ap->huffman_chunk;
         auto n_chunk = (len - 1) / chunk_size + 1;
         for (auto c = 0; c < n_chunk; c++) {
             auto chunk_id_printed   = false;
@@ -204,46 +204,46 @@ void cuSZ::impl::VerifyHuffman(string const& fi, size_t len, Q* xbcode, int chun
 }
 
 template <typename T>
-void cuSZ::impl::ArchiveOutlier(T* d_data, size_t len, size_t lda, int* nnz_outlier, std::string* fo_outlier)
+void cuSZ::impl::ArchiveAsSpM(T* d_data, size_t len, size_t lda, int* nnz_output, /*TODO delete this*/ std::string* fo)
 {
     // dealing with outlier
-    int*     csrRowPtrC = nullptr;  //
-    int*     csrColIndC = nullptr;  // column major, real index
-    float*   csrValC    = nullptr;  // outlier values; TODO template
-    int      nnzC       = 0;
+    int*     csrRowPtr = nullptr;  //
+    int*     csrColInd = nullptr;  // column major, real index
+    float*   csrVal    = nullptr;  // outlier values; TODO template
+    int      nnz       = 0;
     size_t   l_total;
-    uint8_t* outlier_bin;
+    uint8_t* bin;
 
-    ::cuSZ::impl::new_gather(d_data, len, lda, nnzC, &csrRowPtrC, &csrColIndC, &csrValC);
+    ::cuSZ::impl::new_gather(d_data, len, lda, nnzC, &csrRowPtr, &csrColInd, &csrVal);
     // clang-format off
-    auto l_csrRowPtrC = sizeof(int)   * (lda+ 1);
-    auto l_csrColIndC = sizeof(int)   *  nnzC;
-    auto l_csrValC    = sizeof(float) *  nnzC;
-    l_total      = l_csrRowPtrC + l_csrColIndC + l_csrValC;
-    outlier_bin  = new uint8_t[l_total];
-    memcpy(outlier_bin,                               (uint8_t*)csrColIndC, l_csrRowPtrC);
-    memcpy(outlier_bin + l_csrRowPtrC,                (uint8_t*)csrValC,    l_csrColIndC);
-    memcpy(outlier_bin + l_csrRowPtrC + l_csrColIndC, (uint8_t*)csrColIndC, l_csrValC   );
+    auto l_csrRowPtr = sizeof(int)   * (lda+ 1);
+    auto l_csrColInd = sizeof(int)   *  nnz;
+    auto l_csrVal    = sizeof(float) *  nnz;
+    l_total = l_csrRowPtr + l_csrColInd + l_csrVal;
+    bin_out = new uint8_t[l_total];
+    memcpy(bin_out,                             (uint8_t*)csrColInd, l_csrRowPtr);
+    memcpy(bin_out + l_csrRowPtr,               (uint8_t*)csrVal,    l_csrColInd);
+    memcpy(bin_out + l_csrRowPtr + l_csrColInd, (uint8_t*)csrColInd, l_csrVal   );
     // clang-format on
-    cout << log_info << "outlier_bin byte length:\t" << l_total << endl;
+    cout << log_info << "bin byte length:\t" << l_total << endl;
     // #endif
 
-    io::WriteBinaryFile(outlier_bin, l_total, fo_outlier);
-    *nnz_outlier = nnzC;
+    io::WriteBinaryFile(bin_out, l_total, fo);
+    *nnz_output = nnz;
 
-    delete[] csrRowPtrC;
-    delete[] csrColIndC;
-    delete[] csrValC;
-    delete[] outlier_bin;
+    delete[] csrRowPtr;
+    delete[] csrColInd;
+    delete[] csrVal;
+    delete[] bin_out;
 };
 
 template <typename T>
-T* cuSZ::impl::ExtractOutlier(size_t len, size_t lda, int* nnz_outlier, std::string* fi_outlier_as_cuspm)
+T* cuSZ::impl::ExtractFromSpM(size_t len, size_t lda, int* nnz_outlier, std::string* fi_outlier_as_cuspm)
 {
     // clang-format off
     auto l_csrRowPtr   = sizeof(int)   * (lda + 1);
-    auto l_csrColInd   = sizeof(int)   *  *nnz_outlier;
-    auto l_csrVal      = sizeof(float) *  *nnz_outlier;
+    auto l_csrColInd   = sizeof(int)   * *nnz_outlier;
+    auto l_csrVal      = sizeof(float) * *nnz_outlier;
     auto l_outlier_bin = l_csrRowPtr + l_csrColInd + l_csrVal;
     auto outlier_bin   = io::ReadBinaryFile<uint8_t>(*fi_outlier_as_cuspm, l_outlier_bin);
     auto csrRowPtr     = reinterpret_cast<int*  >(outlier_bin);
@@ -254,7 +254,7 @@ T* cuSZ::impl::ExtractOutlier(size_t len, size_t lda, int* nnz_outlier, std::str
     cout << log_dbg << "outlier_bin byte length:\t" << l_outlier_bin << endl;
     cout << log_info << "Extracting outlier (from CSR format)..." << endl;
 
-    ::cuSZ::impl::new_scatter(d_A, len, m, nnz, &csrRowPtr, &csrColInd, &csrVal);
+    ::cuSZ::impl::new_scatter(d_A, len, lda, nnz_outlier, &csrRowPtr, &csrColInd, &csrVal);
 
     cout << log_info << "Finished extracting outlier (from CSR format)..." << endl;
 
