@@ -1,5 +1,8 @@
 // 20-09-10
 
+#ifndef GATHER_SCATTER
+#define GATHER_SCATTER
+
 #include <cuda_runtime.h>
 #include <cusparse.h>
 
@@ -7,24 +10,24 @@ namespace cuSZ {
 namespace impl {
 
 template <typename DType>
-void cuSZ::impl::new_gather(
+void new_gather(
     DType*    d_A,  //
     size_t    len,
     const int m,
-    int&      nnz,
+    int*      nnz,
     int**     csrRowPtr,
     int**     csrColInd,
-    float**   csrVal);
+    DType**   csrVal);
 
 template <typename DType>
-void cuSZ::impl::new_scatter(
+void new_scatter(
     DType*    d_A,  //
     size_t    len,
     const int m,
-    int&      nnz,
+    int*      nnz,
     int**     csrRowPtr,
     int**     csrColInd,
-    float**   csrVal);
+    DType**   csrVal);
 
 void GatherOutlierUsingCusparse(
     float*  d_A,  //
@@ -45,3 +48,5 @@ void GatherOutlierUsingCusparse(
 
 }  // namespace impl
 }  // namespace cuSZ
+
+#endif

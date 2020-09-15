@@ -204,7 +204,7 @@ void cuSZ::impl::VerifyHuffman(string const& fi, size_t len, Q* xbcode, int chun
 }
 
 template <typename T>
-void cuSZ::impl::ArchiveAsSpM(T* d_data, size_t len, size_t lda, int* nnz_output, /*TODO delete this*/ std::string* fo)
+void cuSZ::impl::ArchiveAsSpM(T* d_A, size_t len, size_t lda, int* nnz_output, /*TODO delete this*/ std::string* fo)
 {
     // dealing with outlier
     int*     csrRowPtr = nullptr;  //
@@ -212,9 +212,9 @@ void cuSZ::impl::ArchiveAsSpM(T* d_data, size_t len, size_t lda, int* nnz_output
     float*   csrVal    = nullptr;  // outlier values; TODO template
     int      nnz       = 0;
     size_t   l_total;
-    uint8_t* bin;
+    uint8_t* bin_out;
 
-    ::cuSZ::impl::new_gather(d_data, len, lda, nnzC, &csrRowPtr, &csrColInd, &csrVal);
+    ::cuSZ::impl::new_gather(d_A, len, (int)lda, nnz_output, &csrRowPtr, &csrColInd, &csrVal);
     // clang-format off
     auto l_csrRowPtr = sizeof(int)   * (lda+ 1);
     auto l_csrColInd = sizeof(int)   *  nnz;
@@ -238,7 +238,7 @@ void cuSZ::impl::ArchiveAsSpM(T* d_data, size_t len, size_t lda, int* nnz_output
 };
 
 template <typename T>
-T* cuSZ::impl::ExtractFromSpM(size_t len, size_t lda, int* nnz_outlier, std::string* fi_outlier_as_cuspm)
+void cuSZ::impl::ExtractFromSpM(T* d_A, size_t len, size_t lda, int* nnz_outlier, std::string* fi_outlier_as_cuspm)
 {
     // clang-format off
     auto l_csrRowPtr   = sizeof(int)   * (lda + 1);
@@ -259,7 +259,6 @@ T* cuSZ::impl::ExtractFromSpM(size_t len, size_t lda, int* nnz_outlier, std::str
     cout << log_info << "Finished extracting outlier (from CSR format)..." << endl;
 
     delete[] outlier_bin;
-    return outlier;
 }
 
 template <typename T, typename Q, typename H>
@@ -304,7 +303,7 @@ void cuSZ::workflow::Compress(
 
     // prediction-quantization
     ::cuSZ::impl::PdQ(d_data, d_bcode, dims_L16, ebs_L4);
-    ::cuSZ::impl::ArchiveOutlier(d_data, (size_t)padded_len, padded_edge, &nnz_outlier, &fo_outlier);
+    ::cuSZ::impl::ArchiveAsSpM(d_data, (size_t)padded_len, padded_edge, &nnz_outlier, &fo_outlier);
 
     cout << log_info << "nnz/num.outlier:\t" << nnz_outlier << "\t(" << (nnz_outlier / 1.0 / len * 100) << "%)" << endl;
 
@@ -368,11 +367,12 @@ void cuSZ::workflow::Decompress(
     }
     auto d_bcode = mem::CreateDeviceSpaceAndMemcpyFromHost(xbcode, len);
 
-    auto outlier = ::cuSZ::impl::ExtractOutlier<T>(padded_len, padded_edge, &nnz_outlier, &fi_outlier_as_cuspm);
+    auto d_outlier = mem::CreateCUDASpace<T>(padded_len);
+    ::cuSZ::impl::ExtractFromSpM<T>(d_outlier, padded_len, padded_edge, &nnz_outlier, &fi_outlier_as_cuspm);
 
     // TODO merge d_outlier and d_data
-    auto d_outlier = mem::CreateDeviceSpaceAndMemcpyFromHost(outlier, padded_len);  // okay to use the original len
-    auto d_xdata   = mem::CreateCUDASpace<T>(len);
+    // auto d_outlier = mem::CreateDeviceSpaceAndMemcpyFromHost(outlier, padded_len);  // okay to use the original len
+    auto d_xdata = mem::CreateCUDASpace<T>(len);
     ::cuSZ::impl::ReversedPdQ(d_xdata, d_bcode, d_outlier, dims_L16, ebs_L4[EBx2]);
     auto xdata = mem::CreateHostSpaceAndMemcpyFromDevice(d_xdata, len);
 
@@ -430,7 +430,6 @@ void cuSZ::workflow::Decompress(
     // clean up
     delete[] odata;
     delete[] xdata;
-    delete[] outlier;
     delete[] xbcode;
     cudaFree(d_xdata);
     cudaFree(d_outlier);
