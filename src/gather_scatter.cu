@@ -8,6 +8,7 @@
 using std::cout;
 using std::endl;
 
+#include "cuda_error_handling.cuh"
 #include "format.hh"
 #include "gather_scatter.cuh"
 
@@ -24,61 +25,47 @@ void cuSZ::impl::new_gather(
     cusparseHandle_t   handle      = nullptr;
     cudaStream_t       stream      = nullptr;
     cusparseMatDescr_t descr       = nullptr;
-    cusparseStatus_t   status      = CUSPARSE_STATUS_SUCCESS;
-    cudaError_t        cudaStat1   = cudaSuccess;
-    cudaError_t        cudaStat2   = cudaSuccess;
-    cudaError_t        cudaStat3   = cudaSuccess;
     const int          lda         = m;
     const int          n           = m;
     int*               d_csrRowPtr = nullptr;
     int*               d_csrColInd = nullptr;
     DType*             d_csrVal    = nullptr;
 
-    cudaStat1 = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);  // 1. create stream
-    assert(cudaSuccess == cudaStat1);                                       //
-    status = cusparseCreate(&handle);                                       // 2. create handle
-    assert(CUSPARSE_STATUS_SUCCESS == status);                              //
-    status = cusparseSetStream(handle, stream);                             // 3. bind stream
-    assert(CUSPARSE_STATUS_SUCCESS == status);                              //
-    status = cusparseCreateMatDescr(&descr);                                // 4. create descr
-    assert(CUSPARSE_STATUS_SUCCESS == status);                              //
+    CHECK_CUDA(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));  // 1. create stream
+    CHECK_CUSPARSE(cusparseCreate(&handle));                                // 2. create handle
+    CHECK_CUSPARSE(cusparseSetStream(handle, stream));                      // 3. bind stream
+    CHECK_CUSPARSE(cusparseCreateMatDescr(&descr));                         // 4. create descr
     cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO);               // zero based
     cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL);                // type
 
     // query workspace
     // clang-format off
-    cudaStat1 = cudaMalloc((void**)&d_csrRowPtr, sizeof(int)   * (m + 1));
-    cudaStat2 = cudaMalloc((void**)&d_csrColInd, sizeof(int)   * *nnz   );
-    cudaStat3 = cudaMalloc((void**)&d_csrVal,    sizeof(DType) * *nnz   );
+    CHECK_CUDA(cudaMalloc((void**)&d_csrRowPtr, sizeof(int)   * (m + 1)));
+    CHECK_CUDA(cudaMalloc((void**)&d_csrColInd, sizeof(int)   * *nnz   ));
+    CHECK_CUDA(cudaMalloc((void**)&d_csrVal,    sizeof(DType) * *nnz   ));
     // clang-format on
-    assert(cudaSuccess == cudaStat1);
-    assert(cudaSuccess == cudaStat2);
-    assert(cudaSuccess == cudaStat3);
 
     // compute nnz
     int* d_nnzPerRow = nullptr;
-    status           = cusparseSnnz(
+    CHECK_CUSPARSE(cusparseSnnz(
         handle, CUSPARSE_DIRECTION_ROW,  // parsed by row
         m, n, descr, d_A, lda,           // descrption of d_A
-        d_nnzPerRow, nnz);               // output
-    assert(CUSPARSE_STATUS_SUCCESS == status);
+        d_nnzPerRow, nnz)                // output
+    );
 
     // step 5: dense to csr
-    status = cusparseSdense2csr(
-        handle,                               //
-        m, n, descr, d_A, lda,                // descritpion of d_A
-        d_nnzPerRow,                          // prefileld by nnz() func
-        d_csrVal, d_csrRowPtr, d_csrColInd);  // output
-    assert(CUSPARSE_STATUS_SUCCESS == status);
+    CHECK_CUSPARSE(cusparseSdense2csr(
+        handle,                              //
+        m, n, descr, d_A, lda,               // descritpion of d_A
+        d_nnzPerRow,                         // prefileld by nnz() func
+        d_csrVal, d_csrRowPtr, d_csrColInd)  // output
+    );
 
     // clang-format off
-    cudaStat1 = cudaMemcpy(*csrRowPtr, d_csrRowPtr, sizeof(int)   * (m + 1), cudaMemcpyDeviceToHost);
-    cudaStat2 = cudaMemcpy(*csrColInd, d_csrColInd, sizeof(int)   * *nnz,    cudaMemcpyDeviceToHost);
-    cudaStat3 = cudaMemcpy(*csrVal,    d_csrVal,    sizeof(DType) * *nnz,    cudaMemcpyDeviceToHost);
+    CHECK_CUDA(cudaMemcpy(*csrRowPtr, d_csrRowPtr, sizeof(int)   * (m + 1), cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaMemcpy(*csrColInd, d_csrColInd, sizeof(int)   * *nnz,    cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaMemcpy(*csrVal,    d_csrVal,    sizeof(DType) * *nnz,    cudaMemcpyDeviceToHost));
     // clang-format on
-    assert(cudaSuccess == cudaStat1);
-    assert(cudaSuccess == cudaStat2);
-    assert(cudaSuccess == cudaStat3);
 
     // clean up
     if (d_csrRowPtr) cudaFree(d_csrRowPtr);
@@ -106,40 +93,28 @@ void cuSZ::impl::new_scatter(
     cusparseHandle_t   handle      = nullptr;
     cudaStream_t       stream      = nullptr;
     cusparseMatDescr_t descr       = nullptr;
-    cusparseStatus_t   status      = CUSPARSE_STATUS_SUCCESS;
-    cudaError_t        cudaStat1   = cudaSuccess;
-    cudaError_t        cudaStat2   = cudaSuccess;
-    cudaError_t        cudaStat3   = cudaSuccess;
     const int          lda         = m;
     const int          n           = m;
     int*               d_csrRowPtr = nullptr;
     int*               d_csrColInd = nullptr;
     DType*             d_csrVal    = nullptr;
 
-    cudaStat1 = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);  // 1. create stream
-    assert(cudaSuccess == cudaStat1);                                       //
-    status = cusparseCreate(&handle);                                       // 2. create handle
-    assert(CUSPARSE_STATUS_SUCCESS == status);                              //
-    status = cusparseSetStream(handle, stream);                             // 3. bind stream
-    assert(CUSPARSE_STATUS_SUCCESS == status);                              //
-    status = cusparseCreateMatDescr(&descr);                                // 4. create descr
-    assert(CUSPARSE_STATUS_SUCCESS == status);                              //
-    cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO);               //
-    cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL);                //
+    CHECK_CUDA(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));  // 1. create stream
+    CHECK_CUSPARSE(cusparseCreate(&handle));                                // 2. create handle
+    CHECK_CUSPARSE(cusparseSetStream(handle, stream));                      // 3. bind stream
+    CHECK_CUSPARSE(cusparseCreateMatDescr(&descr));                         // 4. create descr
+    cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO);               // zero based
+    cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL);                // type
 
     // set space
     // clang-format off
-    cudaStat1 = cudaMemcpy(d_csrRowPtr, *csrRowPtr, sizeof(int)   * (m + 1), cudaMemcpyHostToDevice);
-    cudaStat2 = cudaMemcpy(d_csrColInd, *csrColInd, sizeof(int)   * *nnz,    cudaMemcpyHostToDevice);
-    cudaStat3 = cudaMemcpy(d_csrVal,    *csrVal,    sizeof(DType) * *nnz,    cudaMemcpyHostToDevice);
+    CHECK_CUDA(cudaMemcpy(d_csrRowPtr, *csrRowPtr, sizeof(int)   * (m + 1), cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_csrColInd, *csrColInd, sizeof(int)   * *nnz,    cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_csrVal,    *csrVal,    sizeof(DType) * *nnz,    cudaMemcpyHostToDevice));
     // clang-format on
-    assert(cudaSuccess == cudaStat1);
-    assert(cudaSuccess == cudaStat2);
-    assert(cudaSuccess == cudaStat3);
 
     // fill
-    status = cusparseScsr2dense(handle, m, n, descr, d_csrVal, d_csrRowPtr, d_csrColInd, d_A, lda);
-    assert(CUSPARSE_STATUS_SUCCESS == status);
+    CHECK_CUSPARSE(cusparseScsr2dense(handle, m, n, descr, d_csrVal, d_csrRowPtr, d_csrColInd, d_A, lda));
 
     if (d_csrRowPtr) cudaFree(d_csrRowPtr);
     if (d_csrColInd) cudaFree(d_csrColInd);
