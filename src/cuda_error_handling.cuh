@@ -17,6 +17,7 @@ static void HandleError(cudaError_t err, const char* file, int line)
 #define HANDLE_ERROR(err) (HandleError(err, __FILE__, __LINE__))
 // back compatibility end
 
+<<<<<<< HEAD
 static void check_cuda_error(cudaError_t status, const char* file, int line)
 {
     if (cudaSuccess != status) {
@@ -47,5 +48,24 @@ static void check_cusparse_error(cusparseStatus_t status, const char* file, int 
 
 #define CHECK_CUDA(err) (check_cuda_error(err, __FILE__, __LINE__))
 #define CHECK_CUSPARSE(err) (check_cusparse_error(err, __FILE__, __LINE__))
+=======
+#define CHECK_CUDA(func)                                                                                              \
+    {                                                                                                                 \
+        cudaError_t status = (func);                                                                                  \
+        if (cudaSuccess != status) {                                                                                  \
+            printf("CUDA API failed at line %d with error: %s (%d)\n", __LINE__, cudaGetErrorString(status), status); \
+            exit(EXIT_FAILURE);                                                                                       \
+        }                                                                                                             \
+    }
+
+#define CHECK_CUSPARSE(func)                                                                                                  \
+    {                                                                                                                         \
+        cusparseStatus_t status = (func);                                                                                     \
+        if (CUSPARSE_STATUS_SUCCESS != status) {                                                                              \
+            printf("CUSPARSE API failed at line %d with error: %s (%d)\n", __LINE__, cusparseGetErrorString(status), status); \
+            exit(EXIT_FAILURE);                                                                                               \
+        }                                                                                                                     \
+    }
+>>>>>>> 27106855a83dff39b9035fa850475a4f65ad4034
 
 #endif
