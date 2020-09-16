@@ -2,7 +2,6 @@
 // Created by jtian on 4/24/20.
 //
 
-#include <bits/stdint-uintn.h>
 #include <cuda_runtime.h>
 
 #include <sys/stat.h>

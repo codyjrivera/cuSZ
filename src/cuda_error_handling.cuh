@@ -67,7 +67,9 @@ static void check_cuda_error(cudaError_t status, const char* file, int line)
         printf("cudaErrorInvalidDevice              -> %d\n", cudaErrorInvalidDevice);
         printf("cudaErrorStartupFailure             -> %d\n", cudaErrorStartupFailure);
         printf("cudaErrorInvalidKernelImage         -> %d\n", cudaErrorInvalidKernelImage);
+#if (CUDART_VERSION == 1100)
         printf("cudaErrorDeviceUninitialized        -> %d\n", cudaErrorDeviceUninitialized);
+#endif
         printf("cudaErrorMapBufferObjectFailed      -> %d\n", cudaErrorMapBufferObjectFailed);
         printf("cudaErrorUnmapBufferObjectFailed    -> %d\n", cudaErrorUnmapBufferObjectFailed);
         printf("cudaErrorArrayIsMapped              -> %d\n", cudaErrorArrayIsMapped);
@@ -127,8 +129,10 @@ static void check_cuda_error(cudaError_t status, const char* file, int line)
         printf("cudaErrorStreamCaptureImplicit      -> %d\n", cudaErrorStreamCaptureImplicit);
         printf("cudaErrorCapturedEvent              -> %d\n", cudaErrorCapturedEvent);
         printf("cudaErrorStreamCaptureWrongThread   -> %d\n", cudaErrorStreamCaptureWrongThread);
+#if (CUDART_VERSION == 1100)
         printf("cudaErrorTimeout                    -> %d\n", cudaErrorTimeout);
         printf("cudaErrorGraphExecUpdateFailure     -> %d\n", cudaErrorGraphExecUpdateFailure);
+#endif
         printf("cudaErrorUnknown                    -> %d\n", cudaErrorUnknown);
         printf("cudaErrorApiFailureBase (Deprecated)-> %d\n", cudaErrorApiFailureBase);
         printf("\n");
@@ -150,7 +154,9 @@ static void check_cusparse_error(cusparseStatus_t status, const char* file, int 
         printf("CUSPARSE_STATUS_INTERNAL_ERROR            -> %d\n", CUSPARSE_STATUS_INTERNAL_ERROR);
         printf("CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED -> %d\n", CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED);
         printf("CUSPARSE_STATUS_NOT_SUPPORTED             -> %d\n", CUSPARSE_STATUS_NOT_SUPPORTED);
-        // printf("CUSPARSE_STATUS_INSUFFICIENT_RESOURCES    -> %d\n", CUSPARSE_STATUS_INSUFFICIENT_RESOURCES); // not working before CUDA 11
+#if (CUDART_VERSION == 1100)
+        printf("CUSPARSE_STATUS_INSUFFICIENT_RESOURCES    -> %d\n", CUSPARSE_STATUS_INSUFFICIENT_RESOURCES);
+#endif
         printf("\n");
         printf("CUSPARSE API failed at \e[31m\e[1m%s:%d\e[0m with error: %s (%d)\n", file, line, cusparseGetErrorString(status), status);
         exit(EXIT_FAILURE);

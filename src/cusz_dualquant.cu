@@ -2,7 +2,6 @@
 // Created by JianNan Tian on 9/23/19.
 //
 
-#include <bits/stdint-uintn.h>
 #include <cuda_runtime.h>
 #include <stdio.h>  // CUDA use
 #include <cstddef>

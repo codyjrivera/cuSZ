@@ -1,4 +1,3 @@
-#include <bits/stdint-uintn.h>
 #include <cuda_runtime.h>
 #include <cusparse.h>
 
