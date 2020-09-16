@@ -10,41 +10,17 @@ namespace cuSZ {
 namespace impl {
 
 template <typename DType>
-void new_gather(
-    DType*    d_A,  //
-    size_t    len,
-    const int m,
-    int*      nnz,
-    int**     csrRowPtr,
-    int**     csrColInd,
-    DType**   csrVal);
+void GatherAsCSR(DType* d_A, size_t lenA, size_t ldA, int* nnz, std::string* fo);
 
 template <typename DType>
-void new_scatter(
-    DType*    d_A,  //
-    size_t    len,
-    const int m,
-    int*      nnz,
-    int**     csrRowPtr,
-    int**     csrColInd,
-    DType**   csrVal);
+void ScatterFromCSR(DType* d_A, size_t lenA, size_t ldA, int* nnz, std::string* fi);
 
-void GatherOutlierUsingCusparse(
-    float*  d_A,  //
-    size_t  len,
-    int&    nnzC,
-    int**   csrRowPtrC,
-    int**   csrColIndC,
-    float** csrValC);
-
-void GatherOutlierUsingCusparse(
-    float*    d_A,  //
-    size_t    len,
-    const int m,  // m == n, and m is lda
-    int&      nnzC,
-    int**     csrRowPtrC,
-    int**     csrColIndC,
-    float**   csrValC);
+void PruneGatherAsCSR(
+    float*       d_A,  //
+    size_t       len,
+    const int    m,  // m == n, and m is lda
+    int&         nnzC,
+    std::string* fo);
 
 }  // namespace impl
 }  // namespace cuSZ

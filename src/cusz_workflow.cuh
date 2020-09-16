@@ -44,12 +44,6 @@ void PdQ(T*, Q*, size_t*, double*);
 template <typename T, typename Q>
 void ReversedPdQ(T*, Q*, T*, size_t*, double);
 
-template <typename T>
-void ArchiveAsSpM(T* d_data, size_t padded_len, size_t padded_edge, int* nnz_outlier, std::string* s);
-
-template <typename T>
-void ExtractFromSpM(T* d_A, size_t padded_len, size_t padded_edge, int* nnz_outlier, std::string* s);
-
 template <typename T, typename Q>
 void VerifyHuffman(string const&, size_t, Q*, int, size_t*, double*);
 

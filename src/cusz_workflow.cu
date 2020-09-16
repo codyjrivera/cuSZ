@@ -203,64 +203,6 @@ void cuSZ::impl::VerifyHuffman(string const& fi, size_t len, Q* xbcode, int chun
     // end of if count
 }
 
-template <typename T>
-void cuSZ::impl::ArchiveAsSpM(T* d_A, size_t len, size_t lda, int* nnz_output, /*TODO delete this*/ std::string* fo)
-{
-    // dealing with outlier
-    int*     csrRowPtr = nullptr;  //
-    int*     csrColInd = nullptr;  // column major, real index
-    float*   csrVal    = nullptr;  // outlier values; TODO template
-    int      nnz       = 0;
-    size_t   l_total;
-    uint8_t* bin_out;
-
-    ::cuSZ::impl::new_gather(d_A, len, (int)lda, nnz_output, &csrRowPtr, &csrColInd, &csrVal);
-    // clang-format off
-    auto l_csrRowPtr = sizeof(int)   * (lda+ 1);
-    auto l_csrColInd = sizeof(int)   *  nnz;
-    auto l_csrVal    = sizeof(float) *  nnz;
-    l_total = l_csrRowPtr + l_csrColInd + l_csrVal;
-    bin_out = new uint8_t[l_total];
-    memcpy(bin_out,                             (uint8_t*)csrColInd, l_csrRowPtr);
-    memcpy(bin_out + l_csrRowPtr,               (uint8_t*)csrVal,    l_csrColInd);
-    memcpy(bin_out + l_csrRowPtr + l_csrColInd, (uint8_t*)csrColInd, l_csrVal   );
-    // clang-format on
-    cout << log_info << "bin byte length:\t" << l_total << endl;
-    // #endif
-
-    io::WriteBinaryFile(bin_out, l_total, fo);
-    *nnz_output = nnz;
-
-    delete[] csrRowPtr;
-    delete[] csrColInd;
-    delete[] csrVal;
-    delete[] bin_out;
-};
-
-template <typename T>
-void cuSZ::impl::ExtractFromSpM(T* d_A, size_t len, size_t lda, int* nnz_outlier, std::string* fi_outlier_as_cuspm)
-{
-    // clang-format off
-    auto l_csrRowPtr   = sizeof(int)   * (lda + 1);
-    auto l_csrColInd   = sizeof(int)   * *nnz_outlier;
-    auto l_csrVal      = sizeof(float) * *nnz_outlier;
-    auto l_outlier_bin = l_csrRowPtr + l_csrColInd + l_csrVal;
-    auto outlier_bin   = io::ReadBinaryFile<uint8_t>(*fi_outlier_as_cuspm, l_outlier_bin);
-    auto csrRowPtr     = reinterpret_cast<int*  >(outlier_bin);
-    auto csrColInd     = reinterpret_cast<int*  >(outlier_bin + l_csrRowPtr);
-    auto csrVal        = reinterpret_cast<float*>(outlier_bin + l_csrRowPtr + l_csrColInd);  // TODO template
-    // clang-format on
-
-    cout << log_dbg << "outlier_bin byte length:\t" << l_outlier_bin << endl;
-    cout << log_info << "Extracting outlier (from CSR format)..." << endl;
-
-    ::cuSZ::impl::new_scatter(d_A, len, lda, nnz_outlier, &csrRowPtr, &csrColInd, &csrVal);
-
-    cout << log_info << "Finished extracting outlier (from CSR format)..." << endl;
-
-    delete[] outlier_bin;
-}
-
 template <typename T, typename Q, typename H>
 void cuSZ::workflow::Compress(
     std::string& fi,
@@ -284,10 +226,6 @@ void cuSZ::workflow::Compress(
 
     cout << log_info << "padded edge:\t" << padded_edge << "\tpadded_len:\t" << padded_len << endl;
 
-    // old: use the orignal length as it is
-    // auto data   = io::ReadBinaryFile<T>(fi, len);
-    // T*   d_data = mem::CreateDeviceSpaceAndMemcpyFromHost(data, len);
-    // new: use padded length for outlier gather/scatter
     auto data = new T[padded_len]();
     io::ReadBinaryFile<T>(fi, data, len);
     T* d_data = mem::CreateDeviceSpaceAndMemcpyFromHost(data, padded_len);
@@ -303,9 +241,10 @@ void cuSZ::workflow::Compress(
 
     // prediction-quantization
     ::cuSZ::impl::PdQ(d_data, d_bcode, dims_L16, ebs_L4);
-    ::cuSZ::impl::ArchiveAsSpM(d_data, (size_t)padded_len, padded_edge, &nnz_outlier, &fo_outlier);
+    ::cuSZ::impl::GatherAsCSR(d_data, (size_t)padded_len, padded_edge, &nnz_outlier, &fo_outlier);
+    // ::cuSZ::impl::GatherOutlierUsingCusparse(d_data, (size_t)padded_len, padded_edge, nnz_outlier, &fo_outlier);
 
-    cout << log_info << "nnz/num.outlier:\t" << nnz_outlier << "\t(" << (nnz_outlier / 1.0 / len * 100) << "%)" << endl;
+    cout << log_info << "nnz.outlier:\t" << nnz_outlier << "\t(" << (nnz_outlier / 1.0 / len * 100) << "%)" << endl;
 
     Q* bcode;
     if (ap->skip_huffman) {
@@ -315,9 +254,6 @@ void cuSZ::workflow::Compress(
         return;
     }
 
-    // huffman encoding
-    // tuple3ul t = HuffmanEncode<Q, H>(fo_bcode, d_bcode, len, ap->huffman_chunk, dims_L16[CAP]);
-    // std::tie(n_bits, n_uInt, huffman_metadata_size) = t;
     std::tie(n_bits, n_uInt, huffman_metadata_size) = HuffmanEncode<Q, H>(fo_bcode, d_bcode, len, ap->huffman_chunk, dims_L16[CAP]);
 
     cout << log_info << "Compression finished, saved Huffman encoded quant.code.\n" << endl;
@@ -368,10 +304,9 @@ void cuSZ::workflow::Decompress(
     auto d_bcode = mem::CreateDeviceSpaceAndMemcpyFromHost(xbcode, len);
 
     auto d_outlier = mem::CreateCUDASpace<T>(padded_len);
-    ::cuSZ::impl::ExtractFromSpM<T>(d_outlier, padded_len, padded_edge, &nnz_outlier, &fi_outlier_as_cuspm);
+    ::cuSZ::impl::ScatterFromCSR<T>(d_outlier, padded_len, padded_edge, &nnz_outlier, &fi_outlier_as_cuspm);
 
     // TODO merge d_outlier and d_data
-    // auto d_outlier = mem::CreateDeviceSpaceAndMemcpyFromHost(outlier, padded_len);  // okay to use the original len
     auto d_xdata = mem::CreateCUDASpace<T>(len);
     ::cuSZ::impl::ReversedPdQ(d_xdata, d_bcode, d_outlier, dims_L16, ebs_L4[EBx2]);
     auto xdata = mem::CreateHostSpaceAndMemcpyFromDevice(d_xdata, len);
