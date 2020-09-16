@@ -2,11 +2,14 @@
 // Created by JianNan Tian on 9/23/19.
 //
 
+#include <bits/stdint-uintn.h>
 #include <cuda_runtime.h>
 #include <stdio.h>  // CUDA use
 #include <cstddef>
 #include <cstdint>
 #include "cusz_dualquant.cuh"
+
+using uint8__t = uint8_t;
 
 const int DIM0 = 0;
 const int DIM1 = 1;
@@ -344,49 +347,49 @@ __global__ void cusz::PdQ::x_lorenzo_3d1l(T* xdata, T* outlier, Q* bcode, size_t
 
 // compression
 // prototype 1D
-template __global__ void cusz::PdQ::c_lorenzo_1d1l<float, uint8_t, 32>(float*, uint8_t*, size_t const*, double const*);
+template __global__ void cusz::PdQ::c_lorenzo_1d1l<float, uint8__t, 32>(float*, uint8__t*, size_t const*, double const*);
 template __global__ void cusz::PdQ::c_lorenzo_1d1l<float, uint16_t, 32>(float*, uint16_t*, size_t const*, double const*);
 template __global__ void cusz::PdQ::c_lorenzo_1d1l<float, uint32_t, 32>(float*, uint32_t*, size_t const*, double const*);
-template __global__ void cusz::PdQ::c_lorenzo_1d1l<float, uint8_t, 64>(float*, uint8_t*, size_t const*, double const*);
+template __global__ void cusz::PdQ::c_lorenzo_1d1l<float, uint8__t, 64>(float*, uint8__t*, size_t const*, double const*);
 template __global__ void cusz::PdQ::c_lorenzo_1d1l<float, uint16_t, 64>(float*, uint16_t*, size_t const*, double const*);
 template __global__ void cusz::PdQ::c_lorenzo_1d1l<float, uint32_t, 64>(float*, uint32_t*, size_t const*, double const*);
 // prototype 2D
-template __global__ void cusz::PdQ::c_lorenzo_2d1l<float, uint8_t, 16>(float*, uint8_t*, size_t const*, double const*);
+template __global__ void cusz::PdQ::c_lorenzo_2d1l<float, uint8__t, 16>(float*, uint8__t*, size_t const*, double const*);
 template __global__ void cusz::PdQ::c_lorenzo_2d1l<float, uint16_t, 16>(float*, uint16_t*, size_t const*, double const*);
 template __global__ void cusz::PdQ::c_lorenzo_2d1l<float, uint32_t, 16>(float*, uint32_t*, size_t const*, double const*);
 // prototype 3D
-template __global__ void cusz::PdQ::c_lorenzo_3d1l<float, uint8_t, 8>(float*, uint8_t*, size_t const*, double const*);
+template __global__ void cusz::PdQ::c_lorenzo_3d1l<float, uint8__t, 8>(float*, uint8__t*, size_t const*, double const*);
 template __global__ void cusz::PdQ::c_lorenzo_3d1l<float, uint16_t, 8>(float*, uint16_t*, size_t const*, double const*);
 template __global__ void cusz::PdQ::c_lorenzo_3d1l<float, uint32_t, 8>(float*, uint32_t*, size_t const*, double const*);
 // decompression
 // prototype 1D
-template __global__ void cusz::PdQ::x_lorenzo_1d1l<float, uint8_t, 32>(float*, float*, uint8_t*, size_t const*, double);
+template __global__ void cusz::PdQ::x_lorenzo_1d1l<float, uint8__t, 32>(float*, float*, uint8__t*, size_t const*, double);
 template __global__ void cusz::PdQ::x_lorenzo_1d1l<float, uint16_t, 32>(float*, float*, uint16_t*, size_t const*, double);
 template __global__ void cusz::PdQ::x_lorenzo_1d1l<float, uint32_t, 32>(float*, float*, uint32_t*, size_t const*, double);
-template __global__ void cusz::PdQ::x_lorenzo_1d1l<float, uint8_t, 64>(float*, float*, uint8_t*, size_t const*, double);
+template __global__ void cusz::PdQ::x_lorenzo_1d1l<float, uint8__t, 64>(float*, float*, uint8__t*, size_t const*, double);
 template __global__ void cusz::PdQ::x_lorenzo_1d1l<float, uint16_t, 64>(float*, float*, uint16_t*, size_t const*, double);
 template __global__ void cusz::PdQ::x_lorenzo_1d1l<float, uint32_t, 64>(float*, float*, uint32_t*, size_t const*, double);
 // prototype 2D
-template __global__ void cusz::PdQ::x_lorenzo_2d1l<float, uint8_t, 16>(float*, float*, uint8_t*, size_t const*, double);
+template __global__ void cusz::PdQ::x_lorenzo_2d1l<float, uint8__t, 16>(float*, float*, uint8__t*, size_t const*, double);
 template __global__ void cusz::PdQ::x_lorenzo_2d1l<float, uint16_t, 16>(float*, float*, uint16_t*, size_t const*, double);
 template __global__ void cusz::PdQ::x_lorenzo_2d1l<float, uint32_t, 16>(float*, float*, uint32_t*, size_t const*, double);
 // prototype 3D
-template __global__ void cusz::PdQ::x_lorenzo_3d1l<float, uint8_t, 8>(float*, float*, uint8_t*, size_t const*, double);
+template __global__ void cusz::PdQ::x_lorenzo_3d1l<float, uint8__t, 8>(float*, float*, uint8__t*, size_t const*, double);
 template __global__ void cusz::PdQ::x_lorenzo_3d1l<float, uint16_t, 8>(float*, float*, uint16_t*, size_t const*, double);
 template __global__ void cusz::PdQ::x_lorenzo_3d1l<float, uint32_t, 8>(float*, float*, uint32_t*, size_t const*, double);
 
 // c using const mem
-template __global__ void cusz::PdQ::c_lorenzo_1d1l_cmem<float, uint8_t, 32>(float*, uint8_t*);
+template __global__ void cusz::PdQ::c_lorenzo_1d1l_cmem<float, uint8__t, 32>(float*, uint8__t*);
 template __global__ void cusz::PdQ::c_lorenzo_1d1l_cmem<float, uint16_t, 32>(float*, uint16_t*);
 template __global__ void cusz::PdQ::c_lorenzo_1d1l_cmem<float, uint32_t, 32>(float*, uint32_t*);
-template __global__ void cusz::PdQ::c_lorenzo_1d1l_cmem<float, uint8_t, 64>(float*, uint8_t*);
+template __global__ void cusz::PdQ::c_lorenzo_1d1l_cmem<float, uint8__t, 64>(float*, uint8__t*);
 template __global__ void cusz::PdQ::c_lorenzo_1d1l_cmem<float, uint16_t, 64>(float*, uint16_t*);
 template __global__ void cusz::PdQ::c_lorenzo_1d1l_cmem<float, uint32_t, 64>(float*, uint32_t*);
 
-template __global__ void cusz::PdQ::c_lorenzo_2d1l_cmem<float, uint8_t, 16>(float*, uint8_t*);
+template __global__ void cusz::PdQ::c_lorenzo_2d1l_cmem<float, uint8__t, 16>(float*, uint8__t*);
 template __global__ void cusz::PdQ::c_lorenzo_2d1l_cmem<float, uint16_t, 16>(float*, uint16_t*);
 template __global__ void cusz::PdQ::c_lorenzo_2d1l_cmem<float, uint32_t, 16>(float*, uint32_t*);
 
-template __global__ void cusz::PdQ::c_lorenzo_3d1l_cmem<float, uint8_t, 8>(float*, uint8_t*);
+template __global__ void cusz::PdQ::c_lorenzo_3d1l_cmem<float, uint8__t, 8>(float*, uint8__t*);
 template __global__ void cusz::PdQ::c_lorenzo_3d1l_cmem<float, uint16_t, 8>(float*, uint16_t*);
 template __global__ void cusz::PdQ::c_lorenzo_3d1l_cmem<float, uint32_t, 8>(float*, uint32_t*);

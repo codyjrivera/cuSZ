@@ -1,3 +1,4 @@
+#include <bits/stdint-uintn.h>
 #include <cuda_runtime.h>
 #include <cusparse.h>
 
@@ -30,6 +31,7 @@ using std::cerr;
 using std::cout;
 using std::endl;
 using std::string;
+using uint8__t = uint8_t;
 
 const int gpu_B_1d = 32;
 const int gpu_B_2d = 16;
@@ -97,10 +99,10 @@ void cusz::impl::PdQ(T* d_data, Q* d_bcode, size_t* dims_L16, double* ebs_L4)
     HANDLE_ERROR(cudaDeviceSynchronize());
 }
 
-template void cusz::impl::PdQ<float, uint8_t>(float* d_data, uint8_t* d_bcode, size_t* dims_L16, double* ebs_L4);
+template void cusz::impl::PdQ<float, uint8__t>(float* d_data, uint8__t* d_bcode, size_t* dims_L16, double* ebs_L4);
 template void cusz::impl::PdQ<float, uint16_t>(float* d_data, uint16_t* d_bcode, size_t* dims_L16, double* ebs_L4);
 template void cusz::impl::PdQ<float, uint32_t>(float* d_data, uint32_t* d_bcode, size_t* dims_L16, double* ebs_L4);
-// template void cusz::impl::PdQ<double, uint8_t>(double* d_data, uint8_t* d_bcode, size_t* dims_L16, double* ebs_L4);
+// template void cusz::impl::PdQ<double, uint8__t>(double* d_data, uint8__t* d_bcode, size_t* dims_L16, double* ebs_L4);
 // template void cusz::impl::PdQ<double, uint16_t>(double* d_data, uint16_t* d_bcode, size_t* dims_L16, double* ebs_L4);
 // template void cusz::impl::PdQ<double, uint32_t>(double* d_data, uint32_t* d_bcode, size_t* dims_L16, double* ebs_L4);
 
@@ -224,7 +226,7 @@ void cusz::workflow::Compress(
     auto   padded_edge = cusz::impl::GetEdgeOfReinterpretedSquare(len);
     auto   padded_len  = padded_edge * padded_edge;
 
-    cout << log_info << "padded edge:\t" << padded_edge << "\tpadded_len:\t" << padded_len << endl;
+    // cout << log_info << "padded edge:\t" << padded_edge << "\tpadded_len:\t" << padded_len << endl;
 
     auto data = new T[padded_len]();
     io::ReadBinaryFile<T>(fi, data, len);
@@ -371,15 +373,15 @@ void cusz::workflow::Decompress(
     cudaFree(d_bcode);
 }
 
-template void cusz::workflow::Compress<float, uint8_t, uint32_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
-template void cusz::workflow::Compress<float, uint8_t, uint64_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
+template void cusz::workflow::Compress<float, uint8__t, uint32_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
+template void cusz::workflow::Compress<float, uint8__t, uint64_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
 template void cusz::workflow::Compress<float, uint16_t, uint32_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
 template void cusz::workflow::Compress<float, uint16_t, uint64_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
 template void cusz::workflow::Compress<float, uint32_t, uint32_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
 template void cusz::workflow::Compress<float, uint32_t, uint64_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
 
-template void cusz::workflow::Decompress<float, uint8_t, uint32_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
-template void cusz::workflow::Decompress<float, uint8_t, uint64_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
+template void cusz::workflow::Decompress<float, uint8__t, uint32_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
+template void cusz::workflow::Decompress<float, uint8__t, uint64_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
 template void cusz::workflow::Decompress<float, uint16_t, uint32_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
 template void cusz::workflow::Decompress<float, uint16_t, uint64_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
 template void cusz::workflow::Decompress<float, uint32_t, uint32_t>(string&, size_t*, double*, int&, size_t&, size_t&, size_t&, argpack*);
