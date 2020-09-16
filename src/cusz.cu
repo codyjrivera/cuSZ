@@ -82,28 +82,28 @@ int main(int argc, char** argv)
     if (ap->to_archive or ap->dry_run) {  // including dry run
                                           //        if (ap->dtype == "f32") {
         if (ap->quant_rep == 8) {
-            //                if (ap->huffman_rep == 32)
-            //                    cusz::workflow::Compress<float, uint8_t, uint32_t>  //
-            //                        (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
-            //                else
-            //                    cusz::workflow::Compress<float, uint8_t, uint64_t>  //
-            //                        (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
+            if (ap->huffman_rep == 32)
+                cusz::workflow::Compress<float, uint8_t, uint32_t>  //
+                    (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
+            else
+                cusz::workflow::Compress<float, uint8_t, uint64_t>  //
+                    (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
         }
         else if (ap->quant_rep == 16) {
-            //            if (ap->huffman_rep == 32)
-            cusz::workflow::Compress<float, uint16_t, uint32_t>  //
-                (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
-            //            else
-            //                cusz::workflow::Compress<float, uint16_t, uint64_t>  //
-            //                    (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
+            if (ap->huffman_rep == 32)
+                cusz::workflow::Compress<float, uint16_t, uint32_t>  //
+                    (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
+            else
+                cusz::workflow::Compress<float, uint16_t, uint64_t>  //
+                    (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
         }
         else if (ap->quant_rep == 32) {
-            //                if (ap->huffman_rep == 32)
-            //                    cusz::workflow::Compress<float, uint32_t, uint32_t>  //
-            //                        (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
-            //                else
-            //                    cusz::workflow::Compress<float, uint32_t, uint64_t>  //
-            //                        (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
+            if (ap->huffman_rep == 32)
+                cusz::workflow::Compress<float, uint32_t, uint32_t>  //
+                    (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
+            else
+                cusz::workflow::Compress<float, uint32_t, uint64_t>  //
+                    (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
         }
         //        }
     }
@@ -111,29 +111,28 @@ int main(int argc, char** argv)
     if (ap->to_extract) {
         //        if (ap->dtype == "f32") {
         if (ap->quant_rep == 8) {
-            //                if (ap->huffman_rep == 32)
-            //                    cusz::workflow::Decompress<float, uint8_t, uint32_t>  //
-            //                        (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
-            //                else
-            //                    cusz::workflow::Decompress<float, uint8_t, uint64_t>  //
-            //                        (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
+            if (ap->huffman_rep == 32)
+                cusz::workflow::Decompress<float, uint8_t, uint32_t>  //
+                    (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
+            else
+                cusz::workflow::Decompress<float, uint8_t, uint64_t>  //
+                    (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
         }
         else if (ap->quant_rep == 16) {
-            //            if (ap->huffman_rep == 32)
-            cusz::workflow::Decompress<float, uint16_t, uint32_t>  //
-                (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
-            //            else
-            //                cusz::workflow::Decompress<float, uint16_t, uint64_t>  //
-            //                    (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
+            if (ap->huffman_rep == 32)
+                cusz::workflow::Decompress<float, uint16_t, uint32_t>  //
+                    (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
+            else
+                cusz::workflow::Decompress<float, uint16_t, uint64_t>  //
+                    (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
         }
         else if (ap->quant_rep == 32) {
-            //                if (ap->huffman_rep == 32)
-            //                    cusz::workflow::Decompress<float, uint32_t, uint32_t>  //
-            //                        (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
-            //                else
-            //                    cusz::workflow::Decompress<float, uint32_t, uint64_t>  //
-            //                        (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
-            //            }
+            if (ap->huffman_rep == 32)
+                cusz::workflow::Decompress<float, uint32_t, uint32_t>  //
+                    (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
+            else
+                cusz::workflow::Decompress<float, uint32_t, uint64_t>  //
+                    (ap->fname, dims_L16, ebs_L4, num_outlier, total_bits, total_uInt, huffman_metadata_size, ap);
         }
     }
 
