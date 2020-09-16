@@ -295,7 +295,7 @@ void cusz::workflow::Decompress(
         xbcode = io::ReadBinaryFile<Q>(fi_bcode_base, len);
     }
     else {
-        cout << log_info << "Getting quant.code from Huffman decoding..." << endl;
+        cout << log_info << "Huffman decoding into quant.code." << endl;
         xbcode = HuffmanDecode<Q, H>(fi_bcode_base, len, ap->huffman_chunk, total_uInt, dict_size);
         if (ap->verify_huffman) {
             cout << log_info << "Verifying Huffman codec..." << endl;

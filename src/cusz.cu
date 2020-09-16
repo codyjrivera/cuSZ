@@ -49,8 +49,9 @@ int main(int argc, char** argv)
     auto dims_L16 = ap->use_demo ? InitializeDemoDims(ap->demo_dataset, ap->dict_size)  //
                                  : InitializeDims(ap->dict_size, ap->n_dim, ap->d0, ap->d1, ap->d2, ap->d3);
 
-    cout << log_info << "datum file:\t" << ap->fname << endl;
-    cout << log_info << "datum size:\t" << dims_L16[LEN] * sizeof(float) << endl;
+    cout << log_info;
+    printf(
+        "datum:\t\t%s (%lu bytes) of type %s\n", ap->fname.c_str(), dims_L16[LEN] * (ap->dtype == "f32" ? sizeof(float) : sizeof(double)), ap->dtype.c_str());
 
     auto eb_config = new config_t(ap->dict_size, ap->mantissa, ap->exponent);
     if (ap->mode == "r2r") {  // TODO change to faster getting range
@@ -62,9 +63,14 @@ int main(int argc, char** argv)
     int    num_outlier = 0;
     size_t total_bits, total_uInt, huffman_metadata_size;
 
-    cout << log_dbg << "data type:\t" << ap->dtype << endl;
-    cout << log_dbg << "using uint" << ap->quant_rep << "_t as quant. rep." << endl;
-    cout << log_dbg << "using uint" << ap->huffman_rep << "_t as Huffman codeword rep." << endl;
+    cout << log_dbg << "\e[1m"
+         << "uint" << ap->quant_rep << "_t"
+         << "\e[0m"
+         << " to represent quant. code, "
+         << "\e[1m"
+         << "uint" << ap->huffman_rep << "_t"
+         << "\e[0m"
+         << " internal Huffman bitstream" << endl;
 
     if (ap->pre_binning) {
         auto data      = io::ReadBinaryFile<float>(ap->fname, dims_L16[LEN]);

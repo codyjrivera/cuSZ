@@ -151,7 +151,6 @@ std::tuple<size_t, size_t, size_t> HuffmanEncode(string& f_bcode, Q* d_bcode, si
     // deflating
     auto n_chunk           = (len - 1) / chunk_size + 1;
     auto d_hcode_bitwidths = mem::CreateCUDASpace<size_t>(n_chunk);
-    cout << log_dbg << "chunk.size:\t" << chunk_size << "(x " << n_chunk << ")" << endl;
 
     {  // deflate
         auto blockDim = tBLK_DEFLATE;
@@ -178,8 +177,8 @@ std::tuple<size_t, size_t, size_t> HuffmanEncode(string& f_bcode, Q* d_bcode, si
     auto total_bits  = std::accumulate(dH_bit_meta, dH_bit_meta + n_chunk, (size_t)0);
     auto total_uInts = std::accumulate(dH_uInt_meta, dH_uInt_meta + n_chunk, (size_t)0);
 
-    cout << log_info << "total.uInts:\t" << total_uInts << "\n";
-    cout << log_info << "total.bits:\t" << total_bits << "\n";
+    cout << log_dbg;
+    printf("Huffman bitstream: %lu chunks of size = %d, in %lu uint%lus or %lu bits\n", n_chunk, chunk_size, total_uInts, sizeof(H) * 8, total_bits);
 
     // print densely metadata
     PrintChunkHuffmanCoding<H>(dH_bit_meta, dH_uInt_meta, len, chunk_size, total_bits, total_uInts);

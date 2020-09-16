@@ -81,7 +81,7 @@ void cusz::impl::GatherAsCSR(DType* d_A, size_t lenA, size_t ldA, int* nnz, std:
         // clang-format on
     }
 
-    cout << log_dbg << "outlier_bin byte length:\t" << ltotal << endl;
+    // cout << log_dbg << "outlier_bin byte length:\t" << ltotal << endl;
     io::WriteBinaryFile(outbin, ltotal, fo);
     delete[] outbin;
 };
