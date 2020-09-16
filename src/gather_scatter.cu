@@ -15,7 +15,7 @@ using std::endl;
 #include "io.hh"
 
 template <typename DType>
-void cuSZ::impl::GatherAsCSR(DType* d_A, size_t lenA, size_t ldA, int* nnz, std::string* fo)
+void cusz::impl::GatherAsCSR(DType* d_A, size_t lenA, size_t ldA, int* nnz, std::string* fo)
 {
     // dealing with outlier
     uint8_t* outbin;
@@ -108,10 +108,10 @@ void cuSZ::impl::GatherAsCSR(DType* d_A, size_t lenA, size_t ldA, int* nnz, std:
     delete[] outbin;
 };
 
-template void cuSZ::impl::GatherAsCSR<float>(float* d_A, size_t lenA, size_t ldA, int* nnz, std::string* fo);
+template void cusz::impl::GatherAsCSR<float>(float* d_A, size_t lenA, size_t ldA, int* nnz, std::string* fo);
 
 template <typename DType>
-void cuSZ::impl::ScatterFromCSR(DType* d_A, size_t lenA, size_t ldA, int* nnz, std::string* fi)
+void cusz::impl::ScatterFromCSR(DType* d_A, size_t lenA, size_t ldA, int* nnz, std::string* fi)
 {
     // clang-format off
     auto lrp   = sizeof(int)   * (ldA + 1);
@@ -177,9 +177,9 @@ void cuSZ::impl::ScatterFromCSR(DType* d_A, size_t lenA, size_t ldA, int* nnz, s
     delete[] outlier_bin;
 }
 
-template void cuSZ::impl::ScatterFromCSR<float>(float* d_A, size_t lenA, size_t ldA, int* nnz, std::string* fi);
+template void cusz::impl::ScatterFromCSR<float>(float* d_A, size_t lenA, size_t ldA, int* nnz, std::string* fi);
 
-void cuSZ::impl::PruneGatherAsCSR(
+void cusz::impl::PruneGatherAsCSR(
     float*       d_A,  //
     size_t       lenA,
     const int    m,
