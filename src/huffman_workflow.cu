@@ -158,7 +158,7 @@ std::tuple<size_t, size_t, size_t> HuffmanEncode(string& f_in, Q* d_in, size_t l
 
     // deflating
     auto n_chunk           = (len - 1) / chunk_size + 1;
-    auto d_hcode_bitwidths = mem::CreateCUDASpace<size_t>(n_chunk);
+    auto d_h_bitwidths = mem::CreateCUDASpace<size_t>(n_chunk);
 
     {  // deflate
         auto blockDim = tBLK_DEFLATE;

@@ -5,6 +5,7 @@
 #include "argparse.hh"
 #include <cassert>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <regex>
 #include <string>
@@ -14,6 +15,7 @@ using std::cerr;
 using std::cout;
 using std::endl;
 using std::string;
+using std::strlen;
 
 // TODO update with default values
 
