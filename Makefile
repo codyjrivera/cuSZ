@@ -6,8 +6,6 @@
 CXX       := g++
 NVCC      := nvcc
 STD       := -std=c++11
-CCFLAGS   := $(STD) -O3 -g
-NVCCFLAGS := $(STD) -O3 -g --expt-relaxed-constexpr
 HOST_DBG  := -O0 -g
 CUDA_DBG  := -O0 -G -g
 SRC_DIR   := src
@@ -15,8 +13,8 @@ OBJ_DIR   := src
 BIN_DIR   := bin
 
 GPU_VOLTA := -gencode=arch=compute_70,code=sm_70
-# CUDA versions prior to 10.0 require this to be commented out
 GPU_TURING:= -gencode=arch=compute_75,code=sm_75
+GPU_AMPERE:= -gencode=arch=compute_80,code=sm_80
 DEPLOY    := $(GPU_VOLTA) $(GPU_TURING)
 
 CCFLAGS   := $(STD) -O3
@@ -37,9 +35,9 @@ CUOBJS3   := $(CUFILES3:$(SRC_DIR)/%.cu=$(OBJ_DIR)/%.o)
 CUOBJS    := $(CUOBJS1) $(CUOBJS2) $(CUOBJS3)
 OBJS      := $(CCOBJS) $(CUOBJS)
 
-$(CUOBJS1): NVCCFLAGS +=
+# $(CUOBJS1): NVCCFLAGS +=
 $(CUOBJS2): NVCCFLAGS += -rdc=true
-$(CUOBJS3): NVCCFLAGS += $(DEPLOY) -rdc=true
+$(CUOBJS3): NVCCFLAGS += -rdc=true
 
 all: ; @$(MAKE) cusz -j
 
@@ -55,12 +53,12 @@ install: bin/cusz
 	cp bin/cusz /usr/local/bin
 
 cusz: $(OBJS) | $(BIN_DIR)
-	$(NVCC) $(NVCCFLAGS) -lcusparse $(DEPLOY) $(MAIN) -rdc=true $^ -o $(BIN_DIR)/$@
+	$(NVCC) $(NVCCFLAGS) -lcusparse $(MAIN) -rdc=true $^ -o $(BIN_DIR)/$@
 $(BIN_DIR):
 	mkdir $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cc | $(OBJ_DIR)
-	$(CXX) $(CCFLAGS) -c $< -o $@
+	$(CXX)  $(CCFLAGS) -c $< -o $@
 
 $(CUOBJS): $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cu | $(OBJ_DIR)
 	$(NVCC) $(NVCCFLAGS) -c $< -o $@
