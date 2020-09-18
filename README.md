@@ -1,4 +1,4 @@
-![cuSZ logo small](https://user-images.githubusercontent.com/10354752/81179956-05860600-8f70-11ea-8b01-856f29b9e8b2.jpg)
+<img src="https://user-images.githubusercontent.com/10354752/81179956-05860600-8f70-11ea-8b01-856f29b9e8b2.jpg" width="150">
 
 cuSZ: A GPU Accelerated Error-Bounded Lossy Compressor for Scientific Data
 =
@@ -10,18 +10,14 @@ cuSZ: A GPU Accelerated Error-Bounded Lossy Compressor for Scientific Data
 
 ## known issue
 Checked marker denotes issue resolved.
-- [x] [20-05-xx] (**major**) In Release 0.1, cuSZ exports fault file with binning preprocess.
-- [x] [20-05-xx] In Release 0.1, `-Q` argparse does not work.
-- [x] [20-05-xx] (**major**) off-by-ten error in argparse.
-- [x] [20-05-28] gcc 7.3 breaks anyway...
-- [ ] [20-05-28] revert to physically padded version
-- [ ] [20-05-xx] (**major**) `-Q 8 -d 256` (or use `uint8_t` and #bin=256) without skipping Huffman codec does not work.
-- [ ] [20-05-xx] (**major**) 1-GB HACC `xx.f32` exposes Huffman codec bug.
-- [ ] [20-05-xx] (**major**) `B_1d` of 64 and 256 do not work on 4-GB HACC `xx.f32`, `yy.f32`, `zz.f32'. 
+- [x] [20-05] (**major**) watch out binning output and metadata.
+- [ ] [20-05] (**major**) `-Q 8 -d 256` (or use `uint8_t` and #bin=256) without skipping Huffman codec does not work.
+- [ ] [20-05] (**major**) 1-GB HACC `xx.f32` exposes Huffman codec bug.
+- [ ] [20-05] (**major**) `B_1d` of 64 and 256 do not work on 4-GB HACC `xx.f32`, `yy.f32`, `zz.f32`. 
 
 ## TODO List
 
-Please refer to [_Project Management page_](https://github.com/hipdac-lab/cuSZ/projects/2).
+Please refer to [_Project Management page_](https://github.com/szcompressor/cuSZ/projects/2).
 
 # set up
 ## requirements
@@ -31,7 +27,7 @@ Please refer to [_Project Management page_](https://github.com/hipdac-lab/cuSZ/p
 
 ## download
 ```bash
-git clone git@github.com:hipdac-lab/cuSZ.git
+git clone git@github.com:szcompressor/cuSZ.git
 ```
 
 ## compile
@@ -146,6 +142,21 @@ Other module skipping for use scenarios are in development.
 
 # `changelog`
 
+September, 2020
+- `deploy` fix pSZ
+- `feature` integrate parallel build Huffman codebook
+- `doc` update help doc
+- `doc` update published paper
+- `doc` update acknowledgement
+
+August, 2020
+
+July, 2020
+- `doc` add a new NSF grant
+
+June, 2020
+- `fix` compile with CUDA 9 + gcc 7.3
+
 May, 2020
 - `feature` add `--skip huffman` and `--verify huffman` options
 - `feature` add binning as preprocessing
@@ -189,4 +200,6 @@ February, 2020
 : Barnett, Mark L. "Canonical Huffman encoded data decompression algorithm." U.S. Patent 6,657,569, issued December 2, 2003.
  
 # acknowledgement
-This R&D was supported by the Exascale Computing Project (ECP), Project Number: 17-SC-20-SC, a collaborative effort of two DOE organizations – the Office of Science and the National Nuclear Security Administration, responsible for the planning and preparation of a capable exascale ecosystem. This repository was based upon work supported by the U.S. Department of Energy, Office of Science, under contract DE-AC02-06CH11357, and also supported by the National Science Foundation under Grants OAC-1948447 and OAC-2034169.
+This R&D was supported by the Exascale Computing Project (ECP), Project Number: 17-SC-20-SC, a collaborative effort of two DOE organizations – the Office of Science and the National Nuclear Security Administration, responsible for the planning and preparation of a capable exascale ecosystem. This repository was based upon work supported by the U.S. Department of Energy, Office of Science, under contract DE-AC02-06CH11357, and also supported by the National Science Foundation under Grants [CCF-1617488](https://www.nsf.gov/awardsearch/showAward?AWD_ID=1617488), [CCF-1619253](https://www.nsf.gov/awardsearch/showAward?AWD_ID=1619253), [OAC-2003709](https://www.nsf.gov/awardsearch/showAward?AWD_ID=2003709), [OAC-1948447/2034169](https://www.nsf.gov/awardsearch/showAward?AWD_ID=2034169), and [OAC-2003624/2042084](https://www.nsf.gov/awardsearch/showAward?AWD_ID=2042084).
+
+![acknowledgement](https://user-images.githubusercontent.com/5705572/91359921-58e3c480-e7aa-11ea-98ad-6a27645398cb.jpg)
