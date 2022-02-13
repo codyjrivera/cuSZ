@@ -16,5 +16,6 @@
 #include "wrapper/extrap_lorenzo.cuh"
 #include "wrapper/huffman_coarse.cuh"
 #include "wrapper/huffman_parbook.cuh"
+#include "wrapper/interp_spline3.cuh"
 
 #endif

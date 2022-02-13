@@ -32,3 +32,30 @@ target_link_libraries(huffbook
 	-lcusparse)
 
 set_target_properties(huffbook PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+add_executable(dummy_cxlorenzo src/dummy_cxlorenzo.cu)
+target_link_libraries(dummy_cxlorenzo 
+	${CMAKE_SOURCE_DIR}/../Release/libnvgpusz.a 
+	${CMAKE_SOURCE_DIR}/../Release/libsp.a 
+	${CMAKE_SOURCE_DIR}/../Release/libpq.a 
+	${CMAKE_SOURCE_DIR}/../Release/libhuff.a 
+	-lcusparse)
+
+add_executable(dryrun src/test_dryrun.cu)
+target_link_libraries(dryrun 
+	${CMAKE_SOURCE_DIR}/../Release/libnvgpusz.a 
+	${CMAKE_SOURCE_DIR}/../Release/libsp.a 
+	${CMAKE_SOURCE_DIR}/../Release/libpq.a 
+	${CMAKE_SOURCE_DIR}/../Release/libhuff.a 
+	-lcusparse)
+
+add_executable(type_binding src/test_type_binding.cu)
+target_link_libraries(type_binding -lcusparse)
+
+# typebinding: ../src/binding.hh test_type_binding.cu
+# 	clang++ test_type_binding.cu -std=c++14 --cuda-gpu-arch=sm_75 -L/usr/local/cuda/lib64 -lcudart_static -ldl -lrt -pthread
+# 	nvcc test_type_binding.cu
+
+add_executable(query src/test_query.cu)
+target_compile_options(query PRIVATE -DMAIN)
+
