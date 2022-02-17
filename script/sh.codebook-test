@@ -1,0 +1,143 @@
+#!/bin/bash -
+#title           :sh.codebook-test
+#description     :This script will test the codebook construction on SDRBench data, comparing them to a set of
+#                 dumped codebooks
+#author          :Cody Rivera
+#copyright       :(C) 2022 by Washington State University, The University of Alabama, Argonne National Laboratory
+#license         :See LICENSE in top-level directory
+#date            :2020-02-15
+#version         :0.1
+#usage           :./sh.codebook-test cusz-bin codebook-bin data-dir codebook-dir
+#==============================================================================
+
+# Modify these depending on what you want to test
+CUSZ_PREFIX=""; # for nvprof
+CUSZ_ARGS="-z --skip huffman"; # zips, skips Huffman coding
+
+banner()
+{
+    echo "+------------------------------------------+"
+    printf "| %-40s |\n" "`date`"
+    echo "|                                          |"
+    printf "|`tput bold` %-40s `tput sgr0`|\n" "$@"
+    echo "+------------------------------------------+"
+}
+
+sbanner()
+{
+    echo "+------------------------------------------+"
+    printf "|`tput bold` %-40s `tput sgr0`|\n" "$@"
+    echo "+------------------------------------------+"
+}
+
+pwd; hostname; date;
+
+if [ "$#" -ne 4 ]; then
+    echo "usage: $0 cusz-bin codebook-bin data-dir codebook-dir";
+    exit 2;
+fi
+
+if ! command -v $1 &> /dev/null; then
+    echo "$1 could not be found";
+    exit 2;
+fi
+
+if ! command -v $2 &> /dev/null; then
+    echo "$2 could not be found";
+    exit 2;
+fi
+
+CUSZ_BIN="$CUSZ_PREFIX $1";
+CODEBOOK_BIN=$2
+DATA_DIR=$3
+CODEBOOK_DIR=$4
+
+banner "Running tests";
+
+num_errors=0
+
+banner "CESM (Raw Dataset1) TESTS";
+if [ -d "$DATA_DIR/1800x3600" ]; then
+    for fn in $(find $DATA_DIR/1800x3600/*.f32 -type f -execdir basename '{}' ';'); do
+        f="$DATA_DIR/1800x3600/$fn"
+        banner "Testing $f";
+        for eb in "1e-3" "1e-4"; do
+            sbanner "Error bound $eb";
+            $CUSZ_BIN -t f32 -m r2r -e $eb -i $f -l 1800,3600 $CUSZ_ARGS;
+            $CODEBOOK_BIN "$f.this->quant" $(expr $(wc -c <"$f.this->quant") / 2) 1024 u16 u32 > temp1;
+            sed -n '/printing codebook/,/done printing codebook/p' temp1 >temp2;
+            diff -w temp2 "$CODEBOOK_DIR/1800x3600-$fn-$eb"
+            if [ $? -ne 0 ]; then
+                echo "Codebook doesn't match: $f"
+                num_errors=$(expr $num_errors + 1)
+            fi
+            rm "$f.this->quant"
+        done
+    done
+fi
+
+banner "EXAALT TESTS";
+if [ -d "$DATA_DIR/2869440" ]; then
+    for fn in $(find $DATA_DIR/2869440/*.dat2 -type f -execdir basename '{}' ';'); do
+        f="$DATA_DIR/2869440/$fn"
+        banner "Testing $f";
+        for eb in "1e-3" "1e-4"; do
+            sbanner "Error bound $eb";
+            $CUSZ_BIN -t f32 -m r2r -e $eb -i $f -l 2869440 $CUSZ_ARGS;
+            $CODEBOOK_BIN "$f.this->quant" $(expr $(wc -c <"$f.this->quant") / 2) 1024 u16 u32 > temp1;
+            sed -n '/printing codebook/,/done printing codebook/p' temp1 >temp2;
+            diff -w temp2 "$CODEBOOK_DIR/2869440-$fn-$eb"
+            if [ $? -ne 0 ]; then
+                echo "Codebook doesn't match: $f"
+                num_errors=$(expr $num_errors + 1)
+            fi
+            rm "$f.this->quant"
+        done
+    done
+fi
+
+# Isabel requires 64-bit codeword storage in some cases
+banner "Hurricane Isabel TESTS";
+if [ -d "$DATA_DIR/100x500x500" ]; then
+    for fn in $(find $DATA_DIR/100x500x500/*.f32 -type f -execdir basename '{}' ';'); do
+        f="$DATA_DIR/100x500x500/$fn"
+        banner "Testing $f";
+        for eb in "1e-3" "1e-4"; do
+            sbanner "Error bound $eb";
+            $CUSZ_BIN -t f32 -m r2r -c huffbyte=8 -e $eb -i $f -l 100,500,500 $CUSZ_ARGS;
+            $CODEBOOK_BIN "$f.this->quant" $(expr $(wc -c <"$f.this->quant") / 2) 1024 u16 u64 > temp1;
+            sed -n '/printing codebook/,/done printing codebook/p' temp1 >temp2;
+            diff -w temp2 "$CODEBOOK_DIR/100x500x500-$fn-$eb"
+            if [ $? -ne 0 ]; then
+                echo "Codebook doesn't match: $f"
+                num_errors=$(expr $num_errors + 1)
+            fi
+            rm "$f.this->quant"
+        done
+    done
+fi
+
+# HACC requires 64-bit codeword storage in some cases
+banner "HACC 1GB TESTS";
+if [ -d "$DATA_DIR/280953867" ]; then
+    for fn in $(find $DATA_DIR/280953867/*.f32 -type f -execdir basename '{}' ';'); do
+        f="$DATA_DIR/280953867/$fn"
+        banner "Testing $f";
+        for eb in "1e-3" "1e-4"; do
+            sbanner "Error bound $eb";
+            $CUSZ_BIN -t f32 -m r2r -c huffbyte=8 -e $eb -i $f -l 280953867 $CUSZ_ARGS;
+            $CODEBOOK_BIN "$f.this->quant" $(expr $(wc -c <"$f.this->quant") / 2) 1024 u16 u64 > temp1;
+            sed -n '/printing codebook/,/done printing codebook/p' temp1 >temp2;
+            diff -w temp2 "$CODEBOOK_DIR/280953867-$fn-$eb"
+            if [ $? -ne 0 ]; then
+                echo "Codebook doesn't match: $f"
+                num_errors=$(expr $num_errors + 1)
+            fi
+            rm "$f.this->quant"
+        done
+    done
+fi
+
+rm -f temp1 temp2
+
+echo "Number of errors: $num_errors"
